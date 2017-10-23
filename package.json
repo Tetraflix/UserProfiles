@@ -1,0 +1,26 @@
+{
+  "name": "UserProfiles",
+  "version": "1.0.0",
+  "description": "The User Profiles Service manages user genre preference profiles and movie watch history for all Tetraflix users. The service constantly interprets session data to model and update user genre preferences profile, which is a collection of genres and numbers (0 - 100) representing user's preference to the respective genre. For the users in the Control group, their genre preference profiles are fixed to the initial stated genre preferences. For the users in the Experimental group, their genre preference profiles are updated based on exponentially weighted moving average (EXMA) of movie profiles to take into consideration content drift of user preference.",
+  "main": ".eslintrc.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tetraflix/UserProfiles.git"
+  },
+  "author": "Clara Cho",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Tetraflix/UserProfiles/issues"
+  },
+  "homepage": "https://github.com/Tetraflix/UserProfiles#readme",
+  "dependencies": {
+    "eslint": "^4.9.0",
+    "eslint-config-airbnb": "^16.1.0",
+    "eslint-plugin-import": "^2.8.0",
+    "eslint-plugin-jsx-a11y": "^6.0.2",
+    "eslint-plugin-react": "^7.4.0"
+  }
+}
