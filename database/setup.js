@@ -11,6 +11,7 @@ const userProfiles = `
     group_id INTEGER,
     age INTEGER,
     gender VARCHAR(10),
+    watched_movies INTEGER[],
     action INTEGER,
     animation INTEGER,
     comedy INTEGER,
