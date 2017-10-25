@@ -55,6 +55,27 @@ const generateRandomMovieProfile = () => {
   return movieProfile;
 };
 
+const generateProgress = (num) => {
+  // generateProgress
+  // Returns progress value for a movie watching event
+  // 80% of the times it will be 1 (finished watching)
+  // 20% of the times it will be 0.5 (midway through watching)
+  if (num < 0.8) {
+    return 1;
+  } else {
+    return 0.5;
+  }
+};
+
+const generateStartTime = (progress) => {
+  // generateStartTime
+  // Returns start time for an event
+  // Assumes that a movie will have a duration of 1-3 hours
+  const duration = (60 + (Math.random() * 120)) * 60000; // in milliseconds
+  const startTime = new Date() - (progress * duration);
+  return new Date(startTime);
+};
+
 class Movie {
   constructor() {
     this.id = Math.ceil(Math.random() * 10000000); // id is between 1 to 10M
@@ -62,12 +83,16 @@ class Movie {
   }
 }
 
-// TEST
-console.log(new Movie());
+class Event {
+  constructor() {
+    this.movie = new Movie();
+    const randomNum = Math.random();
+    this.progress = generateProgress(randomNum);
+    this.startTime = generateStartTime(this.progress);
+  }
+}
 
-// const Events = () => {
-//   this.movie = new Movie();
-// };
+console.log(new Event());
 
 // const createEvents = () => {
 //   let events = [];
