@@ -17,7 +17,7 @@ const generateRandomMovieProfile = () => {
     'musical',
     'mystery',
     'romance',
-    'sci-fi',
+    'sci_fi',
     'thriller',
     'western',
   ];
@@ -98,7 +98,7 @@ const createEventSeries = () => {
   // Assume that there will be 0-4 events per session, events can be 0 if user logged in
   // but engaged in no movie watching activity (may be filtered by Events service)
   const events = [];
-  let eventEndTime = new Date();
+  let eventEndTime = new Date(); // currently grabs current time but change later 
   const eventCount = Math.floor(Math.random() * 5); // eventCount is between 0 to 4
   for (let i = 0; i < eventCount; i += 1) {
     const event = new Event(eventEndTime);
@@ -119,9 +119,7 @@ class Session {
   }
 }
 
-const simulateData = () => {
-  // SAMPLE SIZE
-  const sampleSize = 10;
+const simulateData = (sampleSize) => {
   const result = [];
 
   for (let i = 0; i < sampleSize; i += 1) {

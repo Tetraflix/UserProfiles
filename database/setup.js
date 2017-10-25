@@ -40,7 +40,7 @@ const movieHistory = `CREATE TABLE IF NOT EXISTS movie_history (
 pool.query(userProfiles)
   .then(() => pool.query(movieHistory))
   .then(() => Promise.all(seed.users.map(user => db.addUser(user))))
-  .then(() => Promise.all(seed.movies.map(movieEvent => db.addMovie(movieEvent))))
+  .then(() => Promise.all(seed.movies.map(movieEvent => db.addMovieEvents(movieEvent))))
   .then(() => console.log('DB: tables created and seeded with data'))
   .then(() => pool.end())
   .catch(e => console.error(e.stack));

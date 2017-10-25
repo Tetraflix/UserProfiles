@@ -48,7 +48,7 @@ const addUser = user =>
     )
   `);
 
-const addMovie = movieEvent =>
+const addMovieEvents = movieEvent =>
   pool.query(`
     INSERT INTO movie_history (
     user_id,
@@ -56,14 +56,20 @@ const addMovie = movieEvent =>
     movie_profile,
     start_time
     ) values(
-    ${movieEvent.user_id},
-    ${movieEvent.movie_id},
-    '${movieEvent.movie_profile}',
-    '${movieEvent.start_time}' 
+    ${movieEvent.userId},
+    ${movieEvent.id},
+    '${movieEvent.profile}',
+    '${movieEvent.startTime}' 
     )
+  `);
+
+const countMovieHistoryRows = () =>
+  pool.query(`
+    SELECT count(*) FROM movie_history
   `);
 
 module.exports = {
   addUser,
-  addMovie,
+  addMovieEvents,
+  countMovieHistoryRows,
 };

@@ -108,9 +108,9 @@ module.exports = {
   ],
   movies: [
     {
-      user_id: 1,
-      movie_id: 23525,
-      movie_profile: JSON.stringify({
+      userId: 1,
+      id: 23525,
+      profile: JSON.stringify({
         action: 0,
         animation: 0,
         comedy: 0,
@@ -127,12 +127,12 @@ module.exports = {
         thriller: 30,
         western: 0,
       }),
-      start_time: '2017-10-23 08:00:00',
+      startTime: '2017-10-23 08:00:00',
     },
     {
-      user_id: 2,
-      movie_id: 325362,
-      movie_profile: JSON.stringify({
+      userId: 2,
+      id: 325362,
+      profile: JSON.stringify({
         action: 0,
         animation: 0,
         comedy: 0,
@@ -149,12 +149,12 @@ module.exports = {
         thriller: 0,
         western: 0,
       }),
-      start_time: '2017-10-23 09:00:00',
+      startTime: '2017-10-23 09:00:00',
     },
     {
-      user_id: 3,
-      movie_id: 623452,
-      movie_profile: JSON.stringify({
+      userId: 3,
+      id: 623452,
+      profile: JSON.stringify({
         action: 50,
         animation: 0,
         comedy: 50,
@@ -171,7 +171,7 @@ module.exports = {
         thriller: 0,
         western: 0,
       }),
-      start_time: '2017-10-23 10:00:00',
+      startTime: '2017-10-23 10:00:00',
     },
   ],
 };
