@@ -119,28 +119,16 @@ class Session {
   }
 }
 
-console.log(new Session());
+const simulateData = () => {
+  // SAMPLE SIZE
+  const sampleSize = 10;
+  const result = [];
 
-// const simulateData = () => {
-//   // SAMPLE SIZE
-//   const sampleSize = 10;
-//   let result = [];
+  for (let i = 0; i < sampleSize; i += 1) {
+    const session = new Session();
+    result.push(session);
+  }
+  return result;
+};
 
-//   for (let i = 0; i < sampleSize; i += 1) {
-//     let sessionData = {};
-
-//     // userId will be a number between 0 to 1M
-//     // for now, 1-5 to account for small db
-//     sessionData.userId = Math.ceil(Math.random() * 5);
-
-//     sessionData.events = createEvents();
-
-
-//     result.push(sessionData);
-//   }
-//   return result;
-// };
-
-// console.log(simulateData());
-
-// module.exports = { simulateData };
+module.exports = { simulateData };
