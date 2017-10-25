@@ -109,7 +109,17 @@ const createEventSeries = () => {
   return events.reverse(); // reverse the array so events are chronological
 };
 
-console.log(createEventSeries());
+class Session {
+  constructor() {
+    // userId will be a number between 0 to 1M
+    // for now, 1-5 to account for small db seed data
+    this.userId = Math.ceil(Math.random() * 5);
+    this.groupId = this.userId % 2; // use modulo to randomize
+    this.events = createEventSeries();
+  }
+}
+
+console.log(new Session());
 
 // const simulateData = () => {
 //   // SAMPLE SIZE
@@ -130,5 +140,7 @@ console.log(createEventSeries());
 //   }
 //   return result;
 // };
+
+// console.log(simulateData());
 
 // module.exports = { simulateData };

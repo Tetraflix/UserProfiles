@@ -43,7 +43,7 @@ module.exports = {
       western: 15,
     },
     {
-      group_id: 0,
+      group_id: 1,
       age: 19,
       gender: 'male',
       watched_movies: '{112, 15346, 853, 2}',
@@ -64,7 +64,7 @@ module.exports = {
       western: 0,
     },
     {
-      group_id: 1,
+      group_id: 0,
       age: 44,
       gender: 'female',
       watched_movies: '{254, 1, 33, 15, 2324}',
@@ -85,7 +85,7 @@ module.exports = {
       western: 0,
     },
     {
-      group_id: 0,
+      group_id: 1,
       age: 24,
       gender: 'male',
       watched_movies: '{325}',
