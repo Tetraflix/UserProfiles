@@ -62,17 +62,16 @@ const generateProgress = (num) => {
   // 20% of the times it will be 0.5 (midway through watching)
   if (num < 0.8) {
     return 1;
-  } else {
-    return 0.5;
   }
+  return 0.5;
 };
 
-const generateStartTime = (progress) => {
+const generateStartTime = (time, progress) => {
   // generateStartTime
   // Returns start time for an event
   // Assumes that a movie will have a duration of 1-3 hours
   const duration = (60 + (Math.random() * 120)) * 60000; // in milliseconds
-  const startTime = new Date() - (progress * duration);
+  const startTime = time - (progress * duration);
   return new Date(startTime);
 };
 
@@ -84,28 +83,33 @@ class Movie {
 }
 
 class Event {
-  constructor() {
+  constructor(time) {
     this.movie = new Movie();
     const randomNum = Math.random();
     this.progress = generateProgress(randomNum);
-    this.startTime = generateStartTime(this.progress);
+    this.startTime = generateStartTime(time, this.progress);
   }
 }
 
-console.log(new Event());
+const createEventSeries = () => {
+  // createEventSeries
+  // Returns an array of movie watching events in chronological order [oldest, ... , recent]
+  // Assume events are in serialized manner, i.e. events don't overlap each other
+  // Assume that there will be 0-4 events per session, events can be 0 if user logged in
+  // but engaged in no movie watching activity (may be filtered by Events service)
+  const events = [];
+  let eventEndTime = new Date();
+  const eventCount = Math.floor(Math.random() * 5); // eventCount is between 0 to 4
+  for (let i = 0; i < eventCount; i += 1) {
+    const event = new Event(eventEndTime);
+    eventEndTime = event.startTime;
+    // console.log(event);
+    events.push(event);
+  }
+  return events.reverse(); // reverse the array so events are chronological
+};
 
-// const createEvents = () => {
-//   let events = [];
-
-//   // eventCount is number of movie watching events for each session
-//   // can be 0 if user logged in but engaged in no movie watching activity
-//   // range 0 - 4 for now
-//   const eventCount = Math.floor(Math.random() * 5);
-//   for (let i = 0; i < eventCount; i += 1) {
-
-//   }
-//   return events;
-// };
+console.log(createEventSeries());
 
 // const simulateData = () => {
 //   // SAMPLE SIZE
