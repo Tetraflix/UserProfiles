@@ -12,10 +12,44 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 # Table of Contents
 
+1. [Development](#development)
+    1. [Installing Dependencies](#installing-dependencies)
 1. [Data Flow](#data-flow)
 1. [Requirements](#requirements)
 1. [Service Architecture](#service-architecture)
 1. [Inputs/Outputs](#inputs-and-outputs)
+
+## Development
+
+From within the root directory, run the following npm scripts to start server development:
+
+```
+npm start
+```
+
+To create the tables and seed the tables with 1 million existing user data and ~1 million movie watching history spanning 10 days of activity, install Postgres and run the setup script on the command line from the root directory:
+
+```
+npm run setup
+``` 
+or
+```
+dropdb profiles && createdb profiles && node database/setup.js
+``` 
+
+To run unit tests, run the test script on the command line from the root directory:
+
+```
+npm test
+``` 
+
+### Installing Dependencies
+
+From within the root directory:
+
+```
+npm install
+```
 
 ## Data Flow
 
@@ -29,9 +63,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## Requirements
 
-- Node 
-- Redis
-- Postgresql
+- Node/Express
+- Postgres
+- Chai/Mocha
 
 ## Service Architecture
 
@@ -57,14 +91,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
         profile: {action: 40, comedy: 60}
       },
       progress: 1,
-      startTime: 2017-09-08 12:50PM
+      startTime: 2017-09-08 12:50:00
     }, {
       movie: {
         id: 155,
         profile: {drama: 100, comedy: 0}
       },
       progress: 0.7,
-      startTime: 2017-09-08 2:50PM
+      startTime: 2017-09-08 2:50:00
     }
   ]
 }
