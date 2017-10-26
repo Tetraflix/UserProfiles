@@ -6,7 +6,7 @@ const config = {
   password: null,
   port: 5432,
   max: 10, // max number of connections
-  idleTimeoutMillis: 5000, // timeout in milliseconds
+  idleTimeoutMillis: 1000, // timeout in milliseconds
 };
 
 // For Deployment

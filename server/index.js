@@ -39,11 +39,5 @@ app.get('/movieHistory', (req, res) => {
     .catch(err => console.error(err));
 });
 
-// GET request to get total users row count
-// generates sessions data then write into db
-app.get('/userProfiles', (req, res) => {
-  res.send(`Total user profiles in the database: ${0}`);
-});
-
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`App listening on port ${port}!`));

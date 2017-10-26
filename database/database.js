@@ -1,6 +1,24 @@
 const { Pool } = require('pg');
 const config = require('./config');
 
+const movieGenres = [
+  'action',
+  'animation',
+  'comedy',
+  'documentary',
+  'drama',
+  'family',
+  'fantasy',
+  'horror',
+  'international',
+  'musical',
+  'mystery',
+  'romance',
+  'sci_fi',
+  'thriller',
+  'western',
+];
+
 const pool = new Pool(config);
 
 const addUser = user =>
@@ -11,42 +29,14 @@ const addUser = user =>
     age,
     gender,
     watched_movies,
-    action,
-    animation,
-    comedy,
-    documentary,
-    drama,
-    family,
-    fantasy,
-    horror,
-    international,
-    musical,
-    mystery,
-    romance,
-    sci_fi,
-    thriller,
-    western
+    profile
     ) VALUES (
     ${user.userId},
     ${user.groupId},
     ${user.age},
     '${user.gender}',
     '${user.watchedMovies}',
-    ${user.action},
-    ${user.animation},
-    ${user.comedy},
-    ${user.documentary},
-    ${user.drama},
-    ${user.family},
-    ${user.fantasy},
-    ${user.horror},
-    ${user.international},
-    ${user.musical},
-    ${user.mystery},
-    ${user.romance},
-    ${user.sciFi},
-    ${user.thriller},
-    ${user.western}   
+    '{${user.profile}}'
     )
   `);
 
@@ -70,8 +60,14 @@ const countMovieHistoryRows = () =>
     SELECT count(*) FROM movie_history
   `);
 
+const countUserProfilesRows = () =>
+  pool.query(`
+    SELECT count(*) FROM user_profiles
+  `);
+
 module.exports = {
   addUser,
   addMovieEvents,
   countMovieHistoryRows,
+  countUserProfilesRows,
 };
