@@ -6,6 +6,7 @@ const pool = new Pool(config);
 const addUser = user =>
   pool.query(`
     INSERT INTO user_profiles (
+    user_id,
     group_id,
     age,
     gender,
@@ -25,11 +26,12 @@ const addUser = user =>
     sci_fi,
     thriller,
     western
-    ) values(
-    ${user.group_id},
+    ) VALUES (
+    ${user.userId},
+    ${user.groupId},
     ${user.age},
     '${user.gender}',
-    '${user.watched_movies}',
+    '${user.watchedMovies}',
     ${user.action},
     ${user.animation},
     ${user.comedy},
@@ -42,7 +44,7 @@ const addUser = user =>
     ${user.musical},
     ${user.mystery},
     ${user.romance},
-    ${user.sci_fi},
+    ${user.sciFi},
     ${user.thriller},
     ${user.western}   
     )
@@ -55,7 +57,7 @@ const addMovieEvents = movieEvent =>
     movie_id,
     movie_profile,
     start_time
-    ) values(
+    ) VALUES (
     ${movieEvent.userId},
     ${movieEvent.id},
     '${movieEvent.profile}',

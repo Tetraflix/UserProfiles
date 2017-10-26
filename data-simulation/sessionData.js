@@ -1,6 +1,6 @@
 const generateRandomMovieProfile = () => {
   // generateRandomMovieProfile
-  // Returns movie profile with values/scores for a random numbe of genres
+  // Returns movie profile with values/scores for a random number of genres
   // A movie will typically have values/scores for 2-3 genres
   // For this simulation, a movie can have 1-5 genres
   // Sum of values/scores will add up to 100 for each movie
@@ -17,7 +17,7 @@ const generateRandomMovieProfile = () => {
     'musical',
     'mystery',
     'romance',
-    'sci_fi',
+    'sciFi',
     'thriller',
     'western',
   ];
@@ -34,7 +34,7 @@ const generateRandomMovieProfile = () => {
     musical: 0,
     mystery: 0,
     romance: 0,
-    sci_fi: 0,
+    sciFi: 0,
     thriller: 0,
     western: 0,
   };
@@ -71,13 +71,13 @@ const generateStartTime = (time, progress) => {
   // Returns start time for an event
   // Assumes that a movie will have a duration of 1-3 hours
   const duration = (60 + (Math.random() * 120)) * 60000; // in milliseconds
-  const startTime = time - (progress * duration);
+  const startTime = time - (progress * duration) - 300000; // 5 minute for 'browsing' movies
   return new Date(startTime);
 };
 
 class Movie {
   constructor() {
-    this.id = Math.ceil(Math.random() * 10000000); // id is between 1 to 10M
+    this.id = Math.ceil(Math.random() * 300000); // id is between 1 to 300,000
     this.profile = generateRandomMovieProfile();
   }
 }
@@ -91,15 +91,15 @@ class Event {
   }
 }
 
-const createEventSeries = () => {
+const createEventSeries = (endTime) => {
   // createEventSeries
   // Returns an array of movie watching events in chronological order [oldest, ... , recent]
   // Assume events are in serialized manner, i.e. events don't overlap each other
   // Assume that there will be 0-4 events per session, events can be 0 if user logged in
   // but engaged in no movie watching activity (may be filtered by Events service)
   const events = [];
-  let eventEndTime = new Date(); // currently grabs current time but change later 
   const eventCount = Math.floor(Math.random() * 5); // eventCount is between 0 to 4
+  let eventEndTime = endTime;
   for (let i = 0; i < eventCount; i += 1) {
     const event = new Event(eventEndTime);
     eventEndTime = event.startTime;
@@ -110,21 +110,26 @@ const createEventSeries = () => {
 };
 
 class Session {
-  constructor() {
+  constructor(endTime) {
     // userId will be a number between 0 to 1M
-    // for now, 1-5 to account for small db seed data
-    this.userId = Math.ceil(Math.random() * 5);
+    this.userId = Math.ceil(Math.random() * 1000000);
     this.groupId = this.userId % 2; // use modulo to randomize
-    this.events = createEventSeries();
+    this.events = createEventSeries(endTime);
   }
 }
 
-const simulateData = (sampleSize) => {
+// 10M data points over 3 month period
+// equivalent to 1 data point per 777 millisecond
+// (for MVP) assume 1 data point per second
+// (time permitting) randomize 86,400 data points throughout 24 hour day
+const simulateData = () => {
   const result = [];
-
+  const sampleSize = 86400 * 1; // 1 days
+  const endTime = new Date(2017, 7, 31, 0, 0, 0, 0);
   for (let i = 0; i < sampleSize; i += 1) {
-    const session = new Session();
+    const session = new Session(endTime);
     result.push(session);
+    endTime.setSeconds(endTime.getSeconds() + 1); // increment by 1 second
   }
   return result;
 };

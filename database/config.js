@@ -5,8 +5,8 @@ const config = {
   database: 'profiles',
   password: null,
   port: 5432,
-  max: 10,
-  idleTimeoutMillis: 30000,
+  max: 10, // max number of connections
+  idleTimeoutMillis: 5000, // timeout in milliseconds
 };
 
 // For Deployment

@@ -8,12 +8,11 @@ app.get('/', (req, res) => {
   res.send('Tetraflix by Tetragon - User Profiles Service');
 });
 
-// Arbitrary GET request to simulate incoming Session Data
-app.get('/sessionData', (req, res) => {
-  // sample size 100,000 sessions
-  // results in around 200,000 - 300,000 events
-  const sampleSize = 100000;
-  const sessions = sessionData.simulateData(sampleSize);
+// GET request to get total movie_history row count
+// generates sessions data then write into db
+app.get('/movieHistory', (req, res) => {
+  const sessions = sessionData.simulateData();
+  const start = new Date();
   return Promise.all(sessions.map((session) => {
     const { userId } = session;
     return Promise.all(session.events.map((event) => {
@@ -28,12 +27,22 @@ app.get('/sessionData', (req, res) => {
       });
     }));
   }))
-    .then(() => db.countMovieHistoryRows())
+    .then(() => {
+      const totalTime = new Date() - start;
+      console.log(`${totalTime / 1000} seconds`);
+      return db.countMovieHistoryRows();
+    })
     .then((data) => {
       const { count } = data.rows[0];
-      res.send(`total movie event row count: ${count}`);
+      res.send(`Total movie events in the database: ${count}`);
     })
     .catch(err => console.error(err));
+});
+
+// GET request to get total users row count
+// generates sessions data then write into db
+app.get('/userProfiles', (req, res) => {
+  res.send(`Total user profiles in the database: ${0}`);
 });
 
 const port = process.env.PORT || 3000;
