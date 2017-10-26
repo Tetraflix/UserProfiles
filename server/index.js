@@ -5,7 +5,7 @@ const sessionData = require('../data-simulation/sessionData');
 const app = express();
 
 app.get('/', (req, res) => {
-  res.send('Tetraflix by Tetragon - User Profiles Service');
+  res.status(200).send('Tetraflix by Tetragon - User Profiles Service');
 });
 
 // GET request to get total movie_history row count
@@ -36,8 +36,10 @@ app.get('/movieHistory', (req, res) => {
       const { count } = data.rows[0];
       res.send(`Total movie events in the database: ${count}`);
     })
-    .catch(err => console.error(err));
+    .catch(e => console.error(e.stack));
 });
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`App listening on port ${port}!`));
+
+module.exports = app;

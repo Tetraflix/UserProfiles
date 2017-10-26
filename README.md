@@ -26,6 +26,7 @@ From within the root directory, run the following npm scripts to start server de
 ```
 npm start
 ```
+
 To create the tables and seed the tables with 1 million existing user data and ~1 million movie watching history spanning 10 days of activity, install Postgres and run the setup script on the command line from the root directory:
 
 ```
@@ -34,6 +35,12 @@ npm run setup
 or
 ```
 dropdb profiles && createdb profiles && node database/setup.js
+``` 
+
+To run unit tests, run the test script on the command line from the root directory:
+
+```
+npm test
 ``` 
 
 ### Installing Dependencies
@@ -58,6 +65,7 @@ npm install
 
 - Node/Express
 - Postgres
+- Chai/Mocha
 
 ## Service Architecture
 

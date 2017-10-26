@@ -23,7 +23,7 @@ const pool = new Pool(config);
 
 const deleteRows = table =>
   pool.query(`
-    DELETE * FROM ${table}
+    TRUNCATE TABLE ${table}
     `);
 
 const addUser = user =>

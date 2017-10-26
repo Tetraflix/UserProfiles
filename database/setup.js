@@ -38,49 +38,53 @@ const populateMovieHistory = `COPY movie_history
   CSV HEADER
 `;
 
-let start;
-let totalTime;
-pool.query(createUserProfiles)
-  .then(() => pool.query(createMovieHistory))
-  // Populate database with 1M users
-  .then(() => {
-    start = new Date();
-    return userData.generateUsers();
-  })
-  .then((userCount) => {
-    totalTime = new Date() - start;
-    console.log(`Generating ${userCount} users took ${totalTime / 1000} seconds`);
-    start = new Date();
-    return pool.query(populateUserProfiles);
-  })
-  .then(() => {
-    totalTime = new Date() - start;
-    console.log(`Seeding user profiles to db took ${totalTime / 1000} seconds`);
-    return db.countUserProfilesRows();
-  })
-  .then((data) => {
-    const { count } = data.rows[0];
-    console.log(`Total user profiles in the database: ${count}`);
-  })
-  // Populate database with ~1M historical movie watching events
-  .then(() => {
-    start = new Date();
-    return sessionData.generateSessionsPerDay(new Date(2017, 8, 1, 0, 0, 0, 0), 10);
-  })
-  .then((sessionCount) => {
-    totalTime = new Date() - start;
-    console.log(`Generating ${sessionCount} sessions took ${totalTime / 1000} seconds`);
-    start = new Date();
-    return pool.query(populateMovieHistory);
-  })
-  .then(() => {
-    totalTime = new Date() - start;
-    console.log(`Seeding movie events to db took ${totalTime / 1000} seconds`);
-    return db.countMovieHistoryRows();
-  })
-  .then((data) => {
-    const { count } = data.rows[0];
-    console.log(`Total movie events in the database: ${count}`);
-  })
-  .then(() => pool.end())
-  .catch(e => console.error(e.stack));
+const seedDatabase = () => {
+  let start;
+  let totalTime;
+  return pool.query(createUserProfiles)
+    .then(() => pool.query(createMovieHistory))
+    // Populate database with 1M users
+    .then(() => {
+      start = new Date();
+      return userData.generateUsers();
+    })
+    .then((userCount) => {
+      totalTime = new Date() - start;
+      console.log(`Generating ${userCount} users took ${totalTime / 1000} seconds`);
+      start = new Date();
+      return pool.query(populateUserProfiles);
+    })
+    .then(() => {
+      totalTime = new Date() - start;
+      console.log(`Seeding user profiles to db took ${totalTime / 1000} seconds`);
+      return db.countUserProfilesRows();
+    })
+    .then((data) => {
+      const { count } = data.rows[0];
+      console.log(`Total user profiles in the database: ${count}`);
+    })
+    // Populate database with ~1M historical movie watching events
+    .then(() => {
+      start = new Date();
+      return sessionData.generateSessionsPerDay(new Date(2017, 8, 1, 0, 0, 0, 0), 1);
+    })
+    .then((sessionCount) => {
+      totalTime = new Date() - start;
+      console.log(`Generating ${sessionCount} sessions took ${totalTime / 1000} seconds`);
+      start = new Date();
+      return pool.query(populateMovieHistory);
+    })
+    .then(() => {
+      totalTime = new Date() - start;
+      console.log(`Seeding movie events to db took ${totalTime / 1000} seconds`);
+      return db.countMovieHistoryRows();
+    })
+    .then((data) => {
+      const { count } = data.rows[0];
+      console.log(`Total movie events in the database: ${count}`);
+    })
+    .then(() => pool.end())
+    .catch(e => console.error(e.stack));
+};
+
+module.exports = { seedDatabase };
