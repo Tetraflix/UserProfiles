@@ -36,8 +36,8 @@ class User {
 }
 
 const generateUsers = () => {
-  // generates 1M users and write it into userData.txt file in CSV format
-  const userCount = 1000000
+  // generates 3M users and write it into userData.txt file in CSV format
+  const userCount = 3000000;
   const start = new Date();
   const wstream = fs.createWriteStream(userData);
   wstream.write('user_id|group_id|age|gender|watched_movies|profile\n');
