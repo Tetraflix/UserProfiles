@@ -38,3 +38,4 @@ bower_components/
 
 # Data generation
 database/userData.txt
+database/sessionData.txt

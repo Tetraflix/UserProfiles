@@ -21,6 +21,11 @@ const movieGenres = [
 
 const pool = new Pool(config);
 
+const deleteRows = table =>
+  pool.query(`
+    DELETE * FROM ${table}
+    `);
+
 const addUser = user =>
   pool.query(`
     INSERT INTO user_profiles (
@@ -50,7 +55,7 @@ const addMovieEvents = movieEvent =>
     ) VALUES (
     ${movieEvent.userId},
     ${movieEvent.id},
-    '${movieEvent.profile}',
+    '{${movieEvent.profile}}',
     '${movieEvent.startTime}' 
     )
   `);
@@ -66,6 +71,7 @@ const countUserProfilesRows = () =>
   `);
 
 module.exports = {
+  deleteRows,
   addUser,
   addMovieEvents,
   countMovieHistoryRows,

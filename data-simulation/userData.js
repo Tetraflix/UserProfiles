@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const userData = './database/userData.txt';
+const userDataPath = './database/userData.txt';
 
 class User {
   constructor(userId) {
@@ -19,7 +19,7 @@ class User {
     // For this simulation, a user can initially start liking 1-5 genres
     // Sum of values/scores will add up to 100 for each user
     const numGenres = Math.ceil(Math.random() * 5); // 1-5 genres
-    let totalGenres = 15;
+    let totalGenres = this.profile.length;
     let score = 100; // sum of all values/scores
     for (let i = 0; i < numGenres; i += 1) {
       const genreId = Math.floor(Math.random() * totalGenres);
@@ -35,11 +35,14 @@ class User {
   }
 }
 
+// For generating user data that are seeded into the database during setup
+// (for MVP) 1M fixed users
+// (time permitting) Add live add/delete user feature
 const generateUsers = () => {
-  // generates 3M users and write it into userData.txt file in CSV format
-  const userCount = 3000000;
-  const start = new Date();
-  const wstream = fs.createWriteStream(userData);
+  // Generates 1M users and write it into userData.txt file in CSV format
+  // Returns a promise with userCount created (1M)
+  const userCount = 1000000;
+  const wstream = fs.createWriteStream(userDataPath);
   wstream.write('user_id|group_id|age|gender|watched_movies|profile\n');
   for (let i = 1; i <= userCount; i += 1) {
     const user = new User(i);
@@ -50,8 +53,7 @@ const generateUsers = () => {
       if (err) {
         reject(err);
       } else {
-        const end = new Date() - start;
-        resolve(`Generating ${userCount} users took ${end / 1000} seconds`);
+        resolve(userCount);
       }
     });
   });

@@ -1,131 +1,93 @@
-const generateRandomMovieProfile = () => {
-  // generateRandomMovieProfile
-  // Returns movie profile with values/scores for a random number of genres
-  // A movie will typically have values/scores for 2-3 genres
-  // For this simulation, a movie can have 1-5 genres
-  // Sum of values/scores will add up to 100 for each movie
-  const movieGenres = [
-    'action',
-    'animation',
-    'comedy',
-    'documentary',
-    'drama',
-    'family',
-    'fantasy',
-    'horror',
-    'international',
-    'musical',
-    'mystery',
-    'romance',
-    'sciFi',
-    'thriller',
-    'western',
-  ];
-  const movieProfile = {
-    action: 0,
-    animation: 0,
-    comedy: 0,
-    documentary: 0,
-    drama: 0,
-    family: 0,
-    fantasy: 0,
-    horror: 0,
-    international: 0,
-    musical: 0,
-    mystery: 0,
-    romance: 0,
-    sciFi: 0,
-    thriller: 0,
-    western: 0,
-  };
-  const numGenres = Math.ceil(Math.random() * 5); // 1-5 genres
-  let score = 100; // sum of all values/scores
-  const genres = movieGenres.slice();
-  for (let i = 0; i < numGenres; i += 1) {
-    const genreId = Math.floor(Math.random() * genres.length);
-    const pickedGenre = genres.splice(genreId, 1);
-    if (i === numGenres - 1) {
-      movieProfile[pickedGenre] = score;
-    } else {
-      const pickScore = Math.ceil(Math.random() * score);
-      movieProfile[pickedGenre] = pickScore;
-      score -= pickScore;
-    }
-  }
-  return movieProfile;
-};
+const fs = require('fs');
 
-const generateProgress = (num) => {
-  // generateProgress
-  // Returns progress value for a movie watching event
-  // 80% of the times it will be 1 (finished watching)
-  // 20% of the times it will be 0.5 (midway through watching)
-  if (num < 0.8) {
-    return 1;
-  }
-  return 0.5;
-};
-
-const generateStartTime = (time, progress) => {
-  // generateStartTime
-  // Returns start time for an event
-  // Assumes that a movie will have a duration of 1-3 hours
-  const duration = (60 + (Math.random() * 120)) * 60000; // in milliseconds
-  const startTime = time - (progress * duration) - 300000; // 5 minute for 'browsing' movies
-  return new Date(startTime);
-};
+const sessionDataPath = './database/sessionData.txt';
 
 class Movie {
   constructor() {
     this.id = Math.ceil(Math.random() * 300000); // id is between 1 to 300,000
-    this.profile = generateRandomMovieProfile();
+    this.profile = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    this.generateRandomMovieProfile();
+  }
+  generateRandomMovieProfile() {
+    // generateRandomMovieProfile
+    // Returns movie profile with values/scores for a random number of genres
+    // A movie will typically have values/scores for 2-3 genres
+    // For this simulation, a movie can have 1-5 genres
+    // Sum of values/scores will add up to 100 for each movie
+    const numGenres = Math.ceil(Math.random() * 5); // 1-5 genres
+    let totalGenres = this.profile.length;
+    let score = 100; // sum of all values/scores
+    for (let i = 0; i < numGenres; i += 1) {
+      const genreId = Math.floor(Math.random() * totalGenres);
+      totalGenres -= 1;
+      if (i === numGenres - 1) {
+        this.profile[genreId] = score;
+      } else {
+        const pickScore = Math.ceil(Math.random() * score);
+        this.profile[genreId] = pickScore;
+        score -= pickScore;
+      }
+    }
   }
 }
 
 class Event {
   constructor(time) {
     this.movie = new Movie();
-    const randomNum = Math.random();
-    this.progress = generateProgress(randomNum);
-    this.startTime = generateStartTime(time, this.progress);
+    this.generateProgress();
+    this.generateStartTime(time);
+  }
+  generateProgress() {
+    // generateProgress
+    // Sets progress value for a movie watching event
+    // 80% of the times it will be 1 (finished watching)
+    // 20% of the times it will be 0.5 (midway through watching)
+    if (Math.random() < 0.8) {
+      this.progress = 1;
+    } else {
+      this.progress = 0.5;
+    }
+  }
+  generateStartTime(time) {
+    // generateStartTime
+    // Sets start time for an event
+    // Assumes that a movie will have a duration of 1-3 hours
+    // 5 minute for 'browsing' movies
+    const duration = (60 + (Math.random() * 120)) * 60000; // in milliseconds
+    this.startTime = new Date(time - (this.progress * duration) - 300000);
   }
 }
-
-const createEventSeries = (endTime) => {
-  // createEventSeries
-  // Returns an array of movie watching events in chronological order [oldest, ... , recent]
-  // Assume events are in serialized manner, i.e. events don't overlap each other
-  // Assume that there will be 0-4 events per session, events can be 0 if user logged in
-  // but engaged in no movie watching activity (may be filtered by Events service)
-  const events = [];
-  const eventCount = Math.floor(Math.random() * 5); // eventCount is between 0 to 4
-  let eventEndTime = endTime;
-  for (let i = 0; i < eventCount; i += 1) {
-    const event = new Event(eventEndTime);
-    eventEndTime = event.startTime;
-    // console.log(event);
-    events.push(event);
-  }
-  return events.reverse(); // reverse the array so events are chronological
-};
 
 class Session {
   constructor(endTime) {
     // userId will be a number between 0 to 1M
     this.userId = Math.ceil(Math.random() * 1000000);
     this.groupId = this.userId % 2; // use modulo to randomize
-    this.events = createEventSeries(endTime);
+    this.createEventSeries(endTime);
+  }
+  createEventSeries(endTime) {
+    // createEventSeries
+    // Sets events array of movie watching events in chronological order [oldest, ... , recent]
+    // Assume events are in serialized manner, i.e. events don't overlap each other
+    // Assume that there will be 0-4 events per session, events can be 0 if user logged in
+    // but engaged in no movie watching activity (may be filtered by Events service)
+    this.events = [];
+    const eventCount = Math.floor(Math.random() * 5); // eventCount is between 0 to 4
+    let eventEndTime = endTime;
+    for (let i = 0; i < eventCount; i += 1) {
+      const event = new Event(eventEndTime);
+      eventEndTime = event.startTime;
+      this.events.push(event);
+    }
+    this.events.reverse(); // reverse the array so events are chronological
   }
 }
 
-// 10M data points over 3 month period
-// equivalent to 1 data point per 777 millisecond
-// (for MVP) assume 1 data point per second
-// (time permitting) randomize 86,400 data points throughout 24 hour day
+// Placeholder for simulating live feed data
 const simulateData = () => {
   const result = [];
   const sampleSize = 86400 * 1; // 1 days
-  const endTime = new Date(2017, 7, 31, 0, 0, 0, 0);
+  const endTime = new Date();
   for (let i = 0; i < sampleSize; i += 1) {
     const session = new Session(endTime);
     result.push(session);
@@ -134,4 +96,35 @@ const simulateData = () => {
   return result;
 };
 
-module.exports = { simulateData };
+// For generating historical data that are seeded into the database during setup
+// 10M data points over 3 month period
+// Equivalent to 1 data point per 777 millisecond
+// (for MVP) Generate 50k evenly spaced sessions per day
+// (time permitting) Randomize 86,400 data points throughout 24 hour day
+const generateSessionsPerDay = (date, days) => {
+  // Generates 50k sessions per day and write it into sessionData.txt file in CSV format
+  // 50K sessions will roughly translate to 100K movie watching events
+  // Returns a promise with sessionCount created (50k per day)
+  const sessionCount = 50000 * days;
+  const endTime = date;
+  const wstream = fs.createWriteStream(sessionDataPath);
+  wstream.write('user_id|movie_id|movie_profile|start_time\n');
+  for (let i = 1; i <= sessionCount; i += 1) {
+    const session = new Session(endTime);
+    session.events.forEach((event) => {
+      wstream.write(`${session.userId}|${event.movie.id}|{${event.movie.profile}}|${event.startTime.toLocaleString()}}\n`);
+    });
+    endTime.setSeconds(endTime.getSeconds() + (86400 / 50000));
+  }
+  return new Promise((resolve, reject) => {
+    wstream.end((err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(sessionCount);
+      }
+    });
+  });
+};
+
+module.exports = { simulateData, generateSessionsPerDay };
