@@ -1,22 +1,19 @@
 const { Pool } = require('pg');
 const chai = require('chai');
 // const chaiHttp = require('chai-http');
-const db = require('../database/database');
 const config = require('../database/config');
+const db = require('../database/database');
 const setup = require('../database/setup');
 // const server = require('../server/index');
 
 const should = chai.should();
 // chai.use(chaiHttp);
 
-describe('Persistent Database Test', () => {
+describe('Database Test', () => {
   let pool;
   before((done) => {
     pool = new Pool(config);
-    db.deleteRows('user_profiles')
-      .then(() => db.deleteRows('movie_history'))
-      .then(() => setup.seedDatabase())
-      .then(() => done());
+    done();
   });
   after((done) => {
     pool.end()

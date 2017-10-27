@@ -15,16 +15,15 @@ class Movie {
     // For this simulation, a movie can have 1-5 genres
     // Sum of values/scores will add up to 100 for each movie
     const numGenres = Math.ceil(Math.random() * 5); // 1-5 genres
-    let totalGenres = this.profile.length;
+    const totalGenres = this.profile.length;
     let score = 100; // sum of all values/scores
     for (let i = 0; i < numGenres; i += 1) {
       const genreId = Math.floor(Math.random() * totalGenres);
-      totalGenres -= 1;
       if (i === numGenres - 1) {
-        this.profile[genreId] = score;
+        this.profile[genreId] += score;
       } else {
         const pickScore = Math.ceil(Math.random() * score);
-        this.profile[genreId] = pickScore;
+        this.profile[genreId] += pickScore;
         score -= pickScore;
       }
     }
@@ -60,8 +59,7 @@ class Event {
 
 class Session {
   constructor(endTime) {
-    // userId will be a number between 0 to 1M
-    this.userId = Math.ceil(Math.random() * 1000000);
+    this.userId = Math.ceil(Math.random() * 1000000); // userId between 0 to 1M
     this.groupId = this.userId % 2; // use modulo to randomize
     this.createEventSeries(endTime);
   }
@@ -106,24 +104,30 @@ const generateSessionsPerDay = (date, days) => {
   // 50K sessions will roughly translate to 100K movie watching events
   // Returns a promise with sessionCount created (50k per day)
   const sessionCount = 50000 * days;
+  let eventCount = 0;
   const endTime = date;
-  const wstream = fs.createWriteStream(sessionDataPath);
-  wstream.write('user_id|movie_id|movie_profile|start_time\n');
-  for (let i = 1; i <= sessionCount; i += 1) {
-    const session = new Session(endTime);
-    session.events.forEach((event) => {
-      wstream.write(`${session.userId}|${event.movie.id}|{${event.movie.profile}}|${event.startTime.toLocaleString()}}\n`);
-    });
-    endTime.setSeconds(endTime.getSeconds() + (86400 / 50000));
-  }
+  // create array of [user_id, movie_id] to update seeded user profiles
+  const userMovie = {};
   return new Promise((resolve, reject) => {
-    wstream.end((err) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(sessionCount);
-      }
-    });
+    const wstream = fs.createWriteStream(sessionDataPath);
+    wstream.write('user_id|movie_id|movie_profile|start_time\n');
+    for (let i = 1; i <= sessionCount; i += 1) {
+      const session = new Session(endTime);
+      session.events.forEach((event) => {
+        eventCount += 1;
+        if (userMovie[session.userId]) {
+          userMovie[session.userId].push(eventCount);
+        } else {
+          userMovie[session.userId] = [eventCount];
+        }
+        wstream.write(`${session.userId}|${event.movie.id}|{${event.movie.profile}}|${event.startTime.toLocaleString()}}\n`);
+      });
+      endTime.setSeconds(endTime.getSeconds() + (86400 / 50000));
+    }
+    wstream.end();
+    wstream.on('finish', () => resolve({ sessionCount, eventCount, userMovie }));
+    // wstream.on("finish", resolve.bind(this, sessionCount, userMovie));
+    wstream.on('error', err => reject(err));
   });
 };
 
