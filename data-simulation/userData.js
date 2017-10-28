@@ -40,7 +40,7 @@ const generateUsers = (userCount, userMovie) => {
   // Generates users and write it into userData.txt file in CSV format
   // Returns a promise with userCount created
   const wstream = fs.createWriteStream(userDataPath);
-  wstream.write('user_id|group_id|age|gender|watched_movies|profile\n');
+  wstream.write('user_id|group_id|age|gender|events|profile\n');
   for (let i = 1; i <= userCount; i += 1) {
     const user = new User(i);
     if (userMovie[user.userId]) {
