@@ -33,14 +33,14 @@ const addUser = user =>
     group_id,
     age,
     gender,
-    watched_movies,
+    events,
     profile
     ) VALUES (
     ${user.userId},
     ${user.groupId},
     ${user.age},
     '${user.gender}',
-    '${user.watchedMovies}',
+    '${user.events}',
     '{${user.profile}}'
     )
   `);
@@ -70,10 +70,26 @@ const countUserProfilesRows = () =>
     SELECT count(*) FROM user_profiles
   `);
 
+const getMovieEventsByUserId = userId =>
+  pool.query(`
+    SELECT * FROM movie_history
+    WHERE user_id = ${userId}
+    ORDER BY start_time
+  `);
+
+const updateUserEvents = userMovie =>
+  pool.query(`
+    UPDATE user_profiles
+    SET events = events || ${userMovie[1]}
+    WHERE user_id = ${userMovie[0]}
+  `);
+
 module.exports = {
   deleteRows,
   addUser,
   addMovieEvents,
   countMovieHistoryRows,
   countUserProfilesRows,
+  getMovieEventsByUserId,
+  updateUserEvents,
 };
