@@ -7,7 +7,7 @@
     "dashboard": "node dashboard/elastic.js",
     "setupdb": "dropdb profiles && createdb profiles && node -e 'require(\"./database/setup.js\").seedDatabase()'",
     "start": "nodemon server/index.js",
-    "test": "mocha --reporter nyan spec/serverSpec.js --timeout 10000"
+    "test": "mocha --reporter nyan spec/serverSpec.js --timeout 200000"
   },
   "repository": {
     "type": "git",
