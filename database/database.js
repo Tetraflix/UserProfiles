@@ -1,24 +1,6 @@
 const { Pool } = require('pg');
 const config = require('./config');
 
-const movieGenres = [
-  'action',
-  'animation',
-  'comedy',
-  'documentary',
-  'drama',
-  'family',
-  'fantasy',
-  'horror',
-  'international',
-  'musical',
-  'mystery',
-  'romance',
-  'sci_fi',
-  'thriller',
-  'western',
-];
-
 const pool = new Pool(config);
 
 const deleteRows = table =>
@@ -77,12 +59,25 @@ const getMovieEventsByUserId = userId =>
     ORDER BY start_time
   `);
 
-const updateUserEvents = userMovie =>
+const updateUserEvents = (userId, eventId) =>
   pool.query(`
     UPDATE user_profiles
-    SET events = events || ${userMovie[1]}
-    WHERE user_id = ${userMovie[0]}
+    SET events = events || ${eventId}
+    WHERE user_id = ${userId}
   `);
+
+const getSubsetUsers = i =>
+  pool.query(`
+    SELECT * FROM user_profiles
+    WHERE user_id BETWEEN ${(i * 100000) + 1} AND ${(i + 1) * 100000}
+  `); // 100,000 at a time
+
+const getSubsetEvents = i =>
+  pool.query(`
+    SELECT * FROM movie_history
+    WHERE event_id BETWEEN ${(i * 100000) + 1} AND ${(i + 1) * 100000} 
+  `); // 100,000 at a time
+
 
 module.exports = {
   deleteRows,
@@ -92,4 +87,6 @@ module.exports = {
   countUserProfilesRows,
   getMovieEventsByUserId,
   updateUserEvents,
+  getSubsetUsers,
+  getSubsetEvents,
 };
