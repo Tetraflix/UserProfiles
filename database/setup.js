@@ -24,7 +24,7 @@ const createMovieHistory = `CREATE TABLE IF NOT EXISTS movie_history (
   user_id INTEGER,
   movie_id INTEGER,
   movie_profile INTEGER[],
-  start_time TIME
+  start_time TIMESTAMP
 )`;
 
 const populateUserProfiles = `COPY user_profiles

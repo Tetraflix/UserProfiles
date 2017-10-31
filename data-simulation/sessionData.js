@@ -120,7 +120,7 @@ const generateSessionsPerDay = (date, days) => {
         } else {
           userMovie[session.userId] = [eventCount];
         }
-        wstream.write(`${session.userId}|${event.movie.id}|{${event.movie.profile}}|${event.startTime.toLocaleString()}}\n`);
+        wstream.write(`${session.userId}|${event.movie.id}|{${event.movie.profile}}|${event.startTime.toUTCString()}}\n`);
       });
       endTime.setSeconds(endTime.getSeconds() + (86400 / 50000));
     }
