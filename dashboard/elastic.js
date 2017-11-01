@@ -2,8 +2,8 @@ const elasticsearch = require('elasticsearch');
 
 const elasticClient = new elasticsearch.Client({
   host: 'localhost:9200',
-  // log: 'info',
-  // log: 'trace',
+  requestTimeout: 200000, // default 30000 millisecond
+  keepAlive: false,
 });
 
 const movieGenres = [
@@ -68,8 +68,9 @@ const bulkIndexUsers = (userData) => {
 const bulkIndexEvents = (eventsData) => {
   const bulk = eventsData.map((event) => {
     const mainId = event.movie_profile.indexOf(Math.max(...event.movie_profile));
+    const time = event.start_time.toISOString();
     return `{ "index" : { "_index" : "profiles", "_type" : "movie_history", "_id": ${event.event_id} } }
-    { "user_id": ${event.user_id}, "movie_id": ${event.movie_id}, "main_genre": "${movieGenres[mainId]}", "start_time": "${event.start_time}" }`;
+    { "user_id": ${event.user_id}, "movie_id": ${event.movie_id}, "main_genre": "${movieGenres[mainId]}", "start_time": "${time}" }`;
   });
   elasticClient.bulk({
     index: 'profiles',

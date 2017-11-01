@@ -1,4 +1,7 @@
 const fs = require('fs');
+const Promise = require('bluebird');
+
+Promise.promisifyAll(fs);
 
 const sessionDataPath = './database/sessionData.txt';
 
@@ -95,40 +98,45 @@ const simulateData = () => {
 };
 
 // For generating historical data that are seeded into the database during setup
-// 10M data points over 3 month period
-// Equivalent to 1 data point per 777 millisecond
-// (for MVP) Generate 50k evenly spaced sessions per day
-// (time permitting) Randomize 86,400 data points throughout 24 hour day
-const generateSessionsPerDay = (date, days) => {
-  // Generates 50k sessions per day and write it into sessionData.txt file in CSV format
-  // 50K sessions will roughly translate to 100K movie watching events
-  // Returns a promise with sessionCount created (50k per day)
-  const sessionCount = 50000 * days;
+// ~9M data points over ~3 month period
+const generateSessions = (date, days) => {
+  const sessionCount = 50000;
+  const sessionsCount = sessionCount * days;
   let eventCount = 0;
-  const endTime = date;
-  // create array of [user_id, movie_id] to update seeded user profiles
   const userMovie = {};
-  return new Promise((resolve, reject) => {
-    const wstream = fs.createWriteStream(sessionDataPath);
-    wstream.write('user_id|movie_id|movie_profile|start_time\n');
-    for (let i = 1; i <= sessionCount; i += 1) {
-      const session = new Session(endTime);
-      session.events.forEach((event) => {
-        eventCount += 1;
-        if (userMovie[session.userId]) {
-          userMovie[session.userId].push(eventCount);
-        } else {
-          userMovie[session.userId] = [eventCount];
+
+  const wstream = fs.createWriteStream(sessionDataPath, { flags: 'a' });
+
+  const writeSequentially = (d) => {
+    if (d < days) {
+      const sessionArr = [];
+      for (let i = 1; i <= sessionCount; i += 1) {
+        const session = new Session(date);
+        const eventArr = [];
+        for (let j = 0; j < session.events.length; j += 1) {
+          eventCount += 1;
+          if (userMovie[session.userId]) {
+            userMovie[session.userId].push(eventCount);
+          } else {
+            userMovie[session.userId] = [eventCount];
+          }
+          eventArr.push(wstream.writeAsync(`${session.userId}|${session.events[j].movie.id}|{${session.events[j].movie.profile}}|${session.events[j].startTime.toUTCString()}}\n`));
         }
-        wstream.write(`${session.userId}|${event.movie.id}|{${event.movie.profile}}|${event.startTime.toLocaleString()}}\n`);
-      });
-      endTime.setSeconds(endTime.getSeconds() + (86400 / 50000));
+        sessionArr.push(eventArr.reduce((p, fn) => p.then(() => fn), Promise.resolve()));
+        date.setSeconds(date.getSeconds() + (86400 / sessionCount));
+      }
+      console.log(`days: ${d}, event count: ${eventCount}`);
+      return sessionArr.reduce((p, fn) => p.then(() => fn), Promise.resolve())
+        .then(() => writeSequentially(d + 1));
+    } else {
+      return wstream.endAsync()
+        .then(() => {
+          return { sessionsCount, eventCount, userMovie };
+        });
     }
-    wstream.end();
-    wstream.on('finish', () => resolve({ sessionCount, eventCount, userMovie }));
-    // wstream.on("finish", resolve.bind(this, sessionCount, userMovie));
-    wstream.on('error', err => reject(err));
-  });
+  };
+
+  return writeSequentially(0);
 };
 
-module.exports = { simulateData, generateSessionsPerDay };
+module.exports = { simulateData, generateSessions };

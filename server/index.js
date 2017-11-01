@@ -44,12 +44,12 @@ app.post('/usersToES', (req, res) => {
       result = result.then(() => {
         const totalTime = new Date() - start;
         console.log(`Indexing ${count} user data to elasticsearch took ${totalTime / 1000} seconds`);
-        res.sendStatus(201);
       })
         .catch(e => console.error(e.stack));
     }
   };
   indexSequentially(0);
+  res.sendStatus(201);
   return result;
 });
 
@@ -59,7 +59,7 @@ app.post('/eventsToES', (req, res) => {
   let count = 0;
   let result = Promise.resolve();
   const indexSequentially = (i) => {
-    if (i < 30) {
+    if (i < 100) {
       result = result.then(() => db.getSubsetEvents(i))
         .then((eventsData) => {
           count += eventsData.rows.length;
@@ -73,12 +73,12 @@ app.post('/eventsToES', (req, res) => {
       result = result.then(() => {
         const totalTime = new Date() - start;
         console.log(`Indexing ${count} events data to elasticsearch took ${totalTime / 1000} seconds`);
-        res.sendStatus(201);
       })
         .catch(e => console.error(e.stack));
     }
   };
   indexSequentially(0);
+  res.sendStatus(201);
   return result;
 });
 

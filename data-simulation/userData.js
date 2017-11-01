@@ -4,8 +4,8 @@ const userDataPath = './database/userData.txt';
 
 class User {
   constructor(userId) {
-    this.userId = userId; // id is between 1 to 1M
-    this.groupId = userId % 2; // use modulo to randomize
+    this.userId = userId; // userId between 1 to 1M
+    this.groupId = userId % 2; // groupId 0 or 1
     this.age = 18 + Math.floor(Math.random() * 83); // age between 18 to 100
     this.gender = (Math.random() < 0.5) ? 'female' : 'male';
     this.events = []; // oldest first, most recent last
@@ -20,7 +20,7 @@ class User {
     // Sum of values/scores will add up to 100 for each user
     const numGenres = Math.ceil(Math.random() * 5); // 1-5 genres
     const totalGenres = this.profile.length;
-    let score = 100; // sum of all values/scores
+    let score = 100;
     for (let i = 0; i < numGenres; i += 1) {
       const genreId = Math.floor(Math.random() * totalGenres);
       if (i === numGenres - 1) {
@@ -35,7 +35,6 @@ class User {
 }
 
 // For generating user data that are seeded into the database during setup
-// (time permitting) Add live add/delete user feature
 const generateUsers = (userCount, userMovie) => {
   // Generates users and write it into userData.txt file in CSV format
   // Returns a promise with userCount created
