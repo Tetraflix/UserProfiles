@@ -98,10 +98,7 @@ const simulateData = () => {
 };
 
 // For generating historical data that are seeded into the database during setup
-// ~5M data points over ~3 month period
-// Equivalent to 1 data point per 777 millisecond
-// (for MVP) Generate 50k evenly spaced sessions per day
-// (time permitting) Randomize 86,400 data points throughout 24 hour day
+// ~9M data points over ~3 month period
 const generateSessions = (date, days) => {
   const sessionCount = 50000;
   const sessionsCount = sessionCount * days;
@@ -141,8 +138,5 @@ const generateSessions = (date, days) => {
 
   return writeSequentially(0);
 };
-
-// { sessionsCount: sessionCount * days, eventCount, userMovie };
-
 
 module.exports = { simulateData, generateSessions };

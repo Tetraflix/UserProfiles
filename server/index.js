@@ -59,7 +59,7 @@ app.post('/eventsToES', (req, res) => {
   let count = 0;
   let result = Promise.resolve();
   const indexSequentially = (i) => {
-    if (i < 30) {
+    if (i < 100) {
       result = result.then(() => db.getSubsetEvents(i))
         .then((eventsData) => {
           count += eventsData.rows.length;
