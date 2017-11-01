@@ -44,12 +44,12 @@ app.post('/usersToES', (req, res) => {
       result = result.then(() => {
         const totalTime = new Date() - start;
         console.log(`Indexing ${count} user data to elasticsearch took ${totalTime / 1000} seconds`);
-        res.sendStatus(201);
       })
         .catch(e => console.error(e.stack));
     }
   };
   indexSequentially(0);
+  res.sendStatus(201);
   return result;
 });
 
@@ -73,12 +73,12 @@ app.post('/eventsToES', (req, res) => {
       result = result.then(() => {
         const totalTime = new Date() - start;
         console.log(`Indexing ${count} events data to elasticsearch took ${totalTime / 1000} seconds`);
-        res.sendStatus(201);
       })
         .catch(e => console.error(e.stack));
     }
   };
   indexSequentially(0);
+  res.sendStatus(201);
   return result;
 });
 

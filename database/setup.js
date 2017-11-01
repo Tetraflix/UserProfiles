@@ -36,24 +36,25 @@ const populateUserProfiles = `COPY user_profiles
 const populateMovieHistory = `COPY movie_history(user_id, movie_id, movie_profile, start_time)
   FROM '${sessionDataPath}'
   DELIMITER '|'
-  CSV HEADER
+  CSV
 `;
 
-const seedDatabase = (days = 30, users = 1000000) => {
+const seedDatabase = (days = 90, users = 1000000) => {
   let start;
   let totalTime;
-  let userMovie;
+  let userMovies;
+
   return pool.query(createUserProfiles)
     .then(() => pool.query(createMovieHistory))
-    // Populate database with ~3M historical movie watching events
+    // Populate database with historical movie watching events
     .then(() => {
       start = new Date();
-      return sessionData.generateSessionsPerDay(new Date('2017-08-01T12:00:00'), days);
+      return sessionData.generateSessions(new Date('2017-08-01T12:00:00'), days);
     })
     .then((results) => {
       totalTime = new Date() - start;
-      console.log(`Generating ${results.sessionCount} sessions and ${results.eventCount} events took ${totalTime / 1000} seconds`);
-      userMovie = results.userMovie;
+      console.log(`Generating ${results.sessionsCount} sessions and ${results.eventCount} events took ${totalTime / 1000} seconds`);
+      userMovies = results.userMovie;
       start = new Date();
       return pool.query(populateMovieHistory);
     })
@@ -69,7 +70,7 @@ const seedDatabase = (days = 30, users = 1000000) => {
     // Populate database with 1M users
     .then(() => {
       start = new Date();
-      return userData.generateUsers(users, userMovie);
+      return userData.generateUsers(users, userMovies);
     })
     .then((userCount) => {
       totalTime = new Date() - start;
