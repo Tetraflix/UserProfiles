@@ -23,7 +23,7 @@ app.post('/profilesES', (req, res) => {
     .then(() => {
       res.sendStatus(201);
     })
-    .catch(e => console.error(e.stack));
+    .catch(err => console.error(err));
 });
 
 // POST request to send bulk historical user profiles data to ES
@@ -41,18 +41,19 @@ app.post('/usersToES', (req, res) => {
         .then(() => {
           console.log(`Sent ${count} user data to elasticsearch`);
           return indexSequentially(i + 1);
-        });
+        })
+        .catch(err => console.error(err));
     } else {
       result = result.then(() => {
         const totalTime = new Date() - start;
         console.log(`Indexing ${count} user data to elasticsearch took ${totalTime / 1000} seconds`);
       })
-        .catch(e => console.error(e.stack));
+        .catch(err => console.error(err));
     }
   };
   indexSequentially(0);
   res.sendStatus(201);
-  return result;
+  result();
 });
 
 // POST request send bulk historical movie watching events data to ES
@@ -70,24 +71,42 @@ app.post('/eventsToES', (req, res) => {
         .then(() => {
           console.log(`Sent ${count} events data to elasticsearch`);
           return indexSequentially(i + 1);
-        });
+        })
+        .catch(err => console.error(err));
     } else {
       result = result.then(() => {
         const totalTime = new Date() - start;
         console.log(`Indexing ${count} events data to elasticsearch took ${totalTime / 1000} seconds`);
       })
-        .catch(e => console.error(e.stack));
+        .catch(err => console.error(err));
     }
   };
   indexSequentially(0);
   res.sendStatus(201);
-  return result;
+  result();
 });
 
 // POST request to receive live feed data
+// Adds movie event to movie_history
+// Then updates user_profiles events array
+// TODO: add/update in elasticsearch
 app.post('/sessions', (req, res) => {
-  console.log(req.body);
-  res.sendStatus(201);
+  const session = req.body;
+  const { userId } = session;
+  Promise.all(session.events.map((event) => {
+    const { startTime } = event;
+    const { id, profile } = event.movie;
+    return db.addMovieEvents({
+      userId,
+      id,
+      profile,
+      startTime,
+    });
+  })).then(results =>
+    Promise.all(results.map(result =>
+      db.updateUserEvents(userId, result.rows[0].event_id))))
+    .then(results => res.status(201).send(results))
+    .catch(err => console.error(err));
 });
 
 const port = process.env.PORT || 3000;

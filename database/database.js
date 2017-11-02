@@ -39,7 +39,7 @@ const addMovieEvents = movieEvent =>
     ${movieEvent.id},
     '{${movieEvent.profile}}',
     '${movieEvent.startTime}' 
-    )
+    ) RETURNING event_id
   `);
 
 const countMovieHistoryRows = () =>
@@ -64,6 +64,7 @@ const updateUserEvents = (userId, eventId) =>
     UPDATE user_profiles
     SET events = events || ${eventId}
     WHERE user_id = ${userId}
+    RETURNING user_id
   `);
 
 const getSubsetUsers = i =>
