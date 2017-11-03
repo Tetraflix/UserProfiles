@@ -5,6 +5,7 @@
   "main": "server/index.js",
   "scripts": {
     "dashboard": "node dashboard/elastic.js",
+    "livedata": "node -e 'require(\"./data-simulation/sessionData.js\").simulateLiveData()'",
     "setupdb": "dropdb profiles && createdb profiles && node -e 'require(\"./database/setup.js\").seedDatabase()'",
     "start": "nodemon server/index.js",
     "test": "mocha --reporter nyan spec/serverSpec.js --timeout 200000"
@@ -21,6 +22,7 @@
   "homepage": "https://github.com/Tetraflix/UserProfiles#readme",
   "dependencies": {
     "bluebird": "^3.5.1",
+    "body-parser": "^1.18.2",
     "elasticsearch": "^13.3.1",
     "eslint": "^4.9.0",
     "eslint-config-airbnb": "^16.1.0",
@@ -29,7 +31,9 @@
     "eslint-plugin-react": "^7.4.0",
     "express": "^4.16.2",
     "node": "^8.3.0",
-    "pg": "^7.3.0"
+    "node-cron": "^1.2.1",
+    "pg": "^7.3.0",
+    "request": "^2.83.0"
   },
   "devDependencies": {
     "chai": "^4.1.2",

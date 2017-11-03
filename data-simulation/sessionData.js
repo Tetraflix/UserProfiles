@@ -1,5 +1,7 @@
 const fs = require('fs');
+const request = require('request');
 const Promise = require('bluebird');
+const cron = require('node-cron');
 
 Promise.promisifyAll(fs);
 
@@ -84,19 +86,6 @@ class Session {
   }
 }
 
-// Placeholder for simulating live feed data
-const simulateData = () => {
-  const result = [];
-  const sampleSize = 86400 * 1; // 1 days
-  const endTime = new Date();
-  for (let i = 0; i < sampleSize; i += 1) {
-    const session = new Session(endTime);
-    result.push(session);
-    endTime.setSeconds(endTime.getSeconds() + 1); // increment by 1 second
-  }
-  return result;
-};
-
 // For generating historical data that are seeded into the database during setup
 // ~9M data points over ~3 month period
 const generateSessions = (date, days) => {
@@ -139,4 +128,23 @@ const generateSessions = (date, days) => {
   return writeSequentially(0);
 };
 
-module.exports = { simulateData, generateSessions };
+// Generates user session data
+// Makes HTTP post request to /sessions every 1 second
+const simulateLiveData = () => {
+  cron.schedule('0-59 * * * * *', () => {
+    const options = {
+      uri: 'http://localhost:3000/sessions',
+      method: 'POST',
+      json: new Session(new Date()),
+    };
+    console.log(options.json.events);
+    request(options, (err, res, body) => {
+      if (err) {
+        console.log(err);
+      }
+      console.log(body);
+    });
+  }, true);
+};
+
+module.exports = { simulateLiveData, generateSessions };

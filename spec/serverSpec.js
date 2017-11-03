@@ -4,19 +4,22 @@ const chaiHttp = require('chai-http');
 const config = require('../database/config');
 const db = require('../database/database');
 const setup = require('../database/setup');
-// const server = require('../server/index');
+const sessionData = require('../data-simulation/sessionData');
 
 const should = chai.should();
 chai.use(chaiHttp);
 
+let pool;
+const server = 'http://localhost:3000';
+const elastic = 'http://localhost:9200';
+
 xdescribe('Database Test', () => {
-  let pool;
 
   before((done) => {
     pool = new Pool(config);
     db.deleteRows('user_profiles')
       .then(() => db.deleteRows('movie_history'))
-      .then(() => setup.seedDatabase(5, 100000)) // mini size for test
+      .then(() => setup.seedDatabase(5, 100000)) // minimal db for test
       .then(() => done());
   });
 
@@ -47,7 +50,6 @@ xdescribe('Database Test', () => {
 });
 
 describe('Dashboard Test', () => {
-  let pool;
 
   before((done) => {
     pool = new Pool(config);
@@ -59,9 +61,9 @@ describe('Dashboard Test', () => {
       .then(() => done());
   });
 
-  xdescribe('Elasticsearch Setup', () => {
+  xdescribe('2) Elasticsearch Setup', () => {
     it('2.1) It should initialize eleasticsearch index', (done) => {
-      chai.request('http://localhost:3000')
+      chai.request(server)
         .post('/profilesES')
         .end((err, res) => {
           if (err) {
@@ -73,7 +75,7 @@ describe('Dashboard Test', () => {
     });
 
     it('2.2) It should send historical user profiles to elasticsearch', (done) => {
-      chai.request('http://localhost:3000')
+      chai.request(server)
         .post('/usersToES')
         .end((err, res) => {
           if (err) {
@@ -85,7 +87,7 @@ describe('Dashboard Test', () => {
     });
 
     it('2.3) It should send historical movie events to elasticsearch', (done) => {
-      chai.request('http://localhost:3000')
+      chai.request(server)
         .post('/eventsToES')
         .end((err, res) => {
           if (err) {
@@ -97,9 +99,9 @@ describe('Dashboard Test', () => {
     });
   });
 
-  describe('Elasticsearch Data', () => {
+  describe('3) Elasticsearch Data', () => {
     it('3.1) It should have profiles index with correct mappings to types', (done) => {
-      chai.request('http://localhost:9200')
+      chai.request(elastic)
         .get('/profiles')
         .end((err, res) => {
           if (err) {
@@ -114,7 +116,7 @@ describe('Dashboard Test', () => {
     });
 
     it('3.2) It should have data under type movie_history', (done) => {
-      chai.request('http://localhost:9200')
+      chai.request(elastic)
         .get('/profiles/movie_history/1')
         .end((err, res) => {
           if (err) {
@@ -127,7 +129,7 @@ describe('Dashboard Test', () => {
     });
 
     it('3.3) Data stored in movie_history should have start_time field that is date data type', (done) => {
-      chai.request('http://localhost:9200')
+      chai.request(elastic)
         .get('/profiles')
         .end((err, res) => {
           if (err) {
@@ -140,7 +142,7 @@ describe('Dashboard Test', () => {
     });
 
     it('3.4) It should have data under type user_profiles', (done) => {
-      chai.request('http://localhost:9200')
+      chai.request(elastic)
         .get('/profiles/user_profiles/1')
         .end((err, res) => {
           if (err) {
@@ -151,6 +153,131 @@ describe('Dashboard Test', () => {
           done();
         });
     });
+  });
+});
+
+describe('Live Data Test', () => {
+  let pool;
+
+  before((done) => {
+    pool = new Pool(config);
+    done();
+  });
+
+  after((done) => {
+    pool.end()
+      .then(() => done());
+  });
+
+  describe('4) Live Session Data', () => {
+    it('4.1) It should receive live session data', (done) => {
+      const json = {
+        userId: 314919,
+        groupId: 1,
+        events: [{
+          movie: {
+            id: 36543,
+            profile: [0, 0, 50, 20, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 0],
+          },
+          progress: 1,
+          startTime: new Date('2017-11-02T20:26:09.378Z'),
+        }],
+      };
+      chai.request(server)
+        .post('/sessions')
+        .send(json)
+        .end((err, res) => {
+          if (err) {
+            done(err);
+          }
+          res.should.have.status(201);
+          done();
+        });
+    });
+
+    it('4.2) It should update user_profiles table', (done) => {
+      const json = {
+        userId: 314919,
+        groupId: 1,
+        events: [{
+          movie: {
+            id: 36543,
+            profile: [0, 0, 50, 20, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 0],
+          },
+          progress: 1,
+          startTime: new Date('2017-11-02T20:26:09.378Z'),
+        }],
+      };
+      chai.request(server)
+        .post('/sessions')
+        .send(json)
+        .end((err, res) => {
+          if (err) {
+            done(err);
+          }
+          res.body[0].command.should.be.eql('UPDATE');
+          done();
+        });
+    });
+
+    it('4.3) It should not update user genre preference profile of user who belongs to the control group', (done) => {
+      let oldProfile;
+      let newProfile;
+      db.getOneUserProfile(2)
+        .then((profile) => {
+          oldProfile = profile.rows[0].profile;
+          const json = {
+            userId: 2,
+            groupId: 0,
+            events: [{
+              movie: {
+                id: 36543,
+                profile: [0, 0, 50, 20, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 0],
+              },
+              progress: 1,
+              startTime: new Date('2017-11-02T20:26:09.378Z'),
+            }],
+          };
+          return chai.request(server)
+            .post('/sessions')
+            .send(json);
+        }).then(() => db.getOneUserProfile(2))
+        .then((profile) => {
+          newProfile = profile.rows[0].profile;
+          newProfile.should.be.eql(oldProfile);
+          done();
+        });
+    });
+
+    it('4.4) It should update user genre preference profile of user who belongs to the experimental group', (done) => {
+      let oldProfile;
+      let newProfile;
+      db.getOneUserProfile(1)
+        .then((profile) => {
+          oldProfile = profile.rows[0].profile;
+          const json = {
+            userId: 1,
+            groupId: 1,
+            events: [{
+              movie: {
+                id: 36543,
+                profile: [0, 0, 50, 20, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 0],
+              },
+              progress: 1,
+              startTime: new Date('2017-11-02T20:26:09.378Z'),
+            }],
+          };
+          return chai.request(server)
+            .post('/sessions')
+            .send(json);
+        }).then(() => db.getOneUserProfile(1))
+        .then((profile) => {
+          newProfile = profile.rows[0].profile;
+          newProfile.should.be.not.eql(oldProfile);
+          done();
+        });
+    });
+
   });
 });
 

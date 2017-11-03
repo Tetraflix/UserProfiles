@@ -1,9 +1,12 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const db = require('../database/database');
-const sessionData = require('../data-simulation/sessionData');
 const elastic = require('../dashboard/elastic');
+const calc = require('./calc');
 
 const app = express();
+
+app.use(bodyParser.json());
 
 app.get('/', (req, res) => {
   res.status(200).send('Tetraflix by Tetragon - User Profiles Service');
@@ -21,7 +24,7 @@ app.post('/profilesES', (req, res) => {
     .then(() => {
       res.sendStatus(201);
     })
-    .catch(e => console.error(e.stack));
+    .catch(err => console.error(err));
 });
 
 // POST request to send bulk historical user profiles data to ES
@@ -39,18 +42,19 @@ app.post('/usersToES', (req, res) => {
         .then(() => {
           console.log(`Sent ${count} user data to elasticsearch`);
           return indexSequentially(i + 1);
-        });
+        })
+        .catch(err => console.error(err));
     } else {
       result = result.then(() => {
         const totalTime = new Date() - start;
         console.log(`Indexing ${count} user data to elasticsearch took ${totalTime / 1000} seconds`);
       })
-        .catch(e => console.error(e.stack));
+        .catch(err => console.error(err));
     }
   };
   indexSequentially(0);
   res.sendStatus(201);
-  return result;
+  result();
 });
 
 // POST request send bulk historical movie watching events data to ES
@@ -68,51 +72,54 @@ app.post('/eventsToES', (req, res) => {
         .then(() => {
           console.log(`Sent ${count} events data to elasticsearch`);
           return indexSequentially(i + 1);
-        });
+        })
+        .catch(err => console.error(err));
     } else {
       result = result.then(() => {
         const totalTime = new Date() - start;
         console.log(`Indexing ${count} events data to elasticsearch took ${totalTime / 1000} seconds`);
       })
-        .catch(e => console.error(e.stack));
+        .catch(err => console.error(err));
     }
   };
   indexSequentially(0);
   res.sendStatus(201);
-  return result;
+  result();
 });
 
-// TO BE MODIFIED
-// GET request to get total movie_history row count
-// generates sessions data then write into db
-// app.get('/movieHistory', (req, res) => {
-//   const sessions = sessionData.simulateData();
-//   const start = new Date();
-//   Promise.all(sessions.map((session) => {
-//     const { userId } = session;
-//     return Promise.all(session.events.map((event) => {
-//       const { id } = event.movie;
-//       const profile = JSON.stringify(event.movie.profile);
-//       const startTime = event.startTime.toLocaleString();
-//       return db.addMovieEvents({
-//         userId,
-//         id,
-//         profile,
-//         startTime,
-//       });
-//     }));
-//   }))
-//     .then(() => {
-//       const totalTime = new Date() - start;
-//       console.log(`${totalTime / 1000} seconds`);
-//       return db.countMovieHistoryRows();
-//     })
-//     .then((data) => {
-//       const { count } = data.rows[0];
-//       res.send(`Total movie events in the database: ${count}`);
-//     })
-//     .catch(e => console.error(e.stack));
-// });
+// POST request to receive live feed data
+// Adds movie event to movie_history then updates user_profiles events array
+// For experimental group, update user_profiles using EMA calculation
+// TODO: add/update in elasticsearch
+app.post('/sessions', (req, res) => {
+  const session = req.body;
+  console.log(session);
+  const { userId, groupId } = session;
+  Promise.all(session.events.map((event) => {
+    const { startTime } = event;
+    const { id, profile } = event.movie;
+    return db.addMovieEvents({
+      userId,
+      id,
+      profile,
+      startTime,
+    });
+  })).then(results =>
+    Promise.all(results.map((result) => {
+      const { event_id, movie_profile } = result.rows[0];
+      if (groupId === 0) {
+        return db.updateUserEvents(userId, event_id);
+      }
+      return db.getOneUserProfile(userId)
+        .then((userData) => {
+          const { profile } = userData.rows[0];
+          const newProfile = calc.EMA(profile, movie_profile);
+          return db.updateUserProfileEvents(userId, newProfile, event_id);
+        });
+    })))
+    .then(results => res.status(201).send(results))
+    .catch(err => console.error(err));
+});
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`App listening on port ${port}!`));
