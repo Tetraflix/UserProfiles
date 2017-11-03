@@ -128,15 +128,16 @@ const generateSessions = (date, days) => {
   return writeSequentially(0);
 };
 
-// Placeholder for simulating live feed data
+// Generates user session data
 // Makes HTTP post request to /sessions every 1 second
-const simulateData = () => {
+const simulateLiveData = () => {
   cron.schedule('0-59 * * * * *', () => {
     const options = {
       uri: 'http://localhost:3000/sessions',
       method: 'POST',
       json: new Session(new Date()),
     };
+    console.log(options.json.events);
     request(options, (err, res, body) => {
       if (err) {
         console.log(err);
@@ -146,4 +147,4 @@ const simulateData = () => {
   }, true);
 };
 
-module.exports = { simulateData, generateSessions };
+module.exports = { simulateLiveData, generateSessions };

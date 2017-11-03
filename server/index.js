@@ -93,6 +93,7 @@ app.post('/eventsToES', (req, res) => {
 // TODO: add/update in elasticsearch
 app.post('/sessions', (req, res) => {
   const session = req.body;
+  console.log(session);
   const { userId, groupId } = session;
   Promise.all(session.events.map((event) => {
     const { startTime } = event;
