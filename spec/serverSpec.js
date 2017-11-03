@@ -16,7 +16,7 @@ xdescribe('Database Test', () => {
     pool = new Pool(config);
     db.deleteRows('user_profiles')
       .then(() => db.deleteRows('movie_history'))
-      .then(() => setup.seedDatabase(5, 100000)) // mini size for test
+      .then(() => setup.seedDatabase(5, 100000)) // minimal db for test
       .then(() => done());
   });
 

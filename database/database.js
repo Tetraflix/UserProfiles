@@ -39,7 +39,7 @@ const addMovieEvents = movieEvent =>
     ${movieEvent.id},
     '{${movieEvent.profile}}',
     '${movieEvent.startTime}' 
-    ) RETURNING event_id
+    ) RETURNING event_id, movie_profile 
   `);
 
 const countMovieHistoryRows = () =>
@@ -59,10 +59,24 @@ const getMovieEventsByUserId = userId =>
     ORDER BY start_time
   `);
 
+const getOneUserProfile = userId =>
+  pool.query(`
+    SELECT profile from user_profiles
+    WHERE user_id = ${userId}
+  `);
+
 const updateUserEvents = (userId, eventId) =>
   pool.query(`
     UPDATE user_profiles
     SET events = events || ${eventId}
+    WHERE user_id = ${userId}
+    RETURNING user_id
+  `);
+
+const updateUserProfileEvents = (userId, profile, eventId) =>
+  pool.query(`
+    UPDATE user_profiles
+    SET profile = '{${profile}}', events = events || ${eventId}
     WHERE user_id = ${userId}
     RETURNING user_id
   `);
@@ -87,7 +101,9 @@ module.exports = {
   countMovieHistoryRows,
   countUserProfilesRows,
   getMovieEventsByUserId,
+  getOneUserProfile,
   updateUserEvents,
+  updateUserProfileEvents,
   getSubsetUsers,
   getSubsetEvents,
 };

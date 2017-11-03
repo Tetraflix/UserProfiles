@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const db = require('../database/database');
 const elastic = require('../dashboard/elastic');
+const calc = require('./calc');
 
 const app = express();
 
@@ -87,12 +88,12 @@ app.post('/eventsToES', (req, res) => {
 });
 
 // POST request to receive live feed data
-// Adds movie event to movie_history
-// Then updates user_profiles events array
+// Adds movie event to movie_history then updates user_profiles events array
+// For experimental group, update user_profiles using EMA calculation
 // TODO: add/update in elasticsearch
 app.post('/sessions', (req, res) => {
   const session = req.body;
-  const { userId } = session;
+  const { userId, groupId } = session;
   Promise.all(session.events.map((event) => {
     const { startTime } = event;
     const { id, profile } = event.movie;
@@ -103,8 +104,18 @@ app.post('/sessions', (req, res) => {
       startTime,
     });
   })).then(results =>
-    Promise.all(results.map(result =>
-      db.updateUserEvents(userId, result.rows[0].event_id))))
+    Promise.all(results.map((result) => {
+      const { event_id, movie_profile } = result.rows[0];
+      if (groupId === 0) {
+        return db.updateUserEvents(userId, event_id);
+      }
+      return db.getOneUserProfile(userId)
+        .then((userData) => {
+          const { profile } = userData.rows[0];
+          const newProfile = calc.EMA(profile, movie_profile);
+          return db.updateUserProfileEvents(userId, newProfile, event_id);
+        });
+    })))
     .then(results => res.status(201).send(results))
     .catch(err => console.error(err));
 });
