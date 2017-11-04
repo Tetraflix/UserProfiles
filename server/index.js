@@ -2,32 +2,21 @@ const Promise = require('bluebird');
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
-// const AWS = require('aws-sdk');
+const AWS = require('aws-sdk');
 const db = require('../database/database');
 const elastic = require('../dashboard/elastic');
 const calc = require('./calc');
-const sessionData = require('../data-simulation/sessionData');
+const cron = require('node-cron');
 
-// AWS.config.loadFromPath(path.resolve('credentials/config.json'));
+AWS.config.loadFromPath(path.resolve('credentials/config.json'));
 
-// const sessionsQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-sessions-fifo';
+const sessionsQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-sessions-fifo';
+const usersQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-userprofiles-fifo';
 
-// const sqs = new AWS.SQS();
-// sqs.sendMessageAsync = Promise.promisify(sqs.sendMessage);
-// sqs.receiveMessageAsync = Promise.promisify(sqs.receiveMessage);
-// sqs.deleteMessageAsync = Promise.promisify(sqs.deleteMessage);
-
-// const params = {
-//   QueueUrl: sessionsQueueUrl,
-//   MessageBody: JSON.stringify(sessionData.generateOneSession()),
-// };
-// sqs.sendMessageAsync(params)
-//   .then((data) => {
-//     console.log("Success", data.MessageId);
-//     return sqs.receiveMessageAsync({ QueueUrl: queueUrl.sessions });
-//   })
-//   .then((data) => console.log("Received", data))
-//   .catch((err) => console.log("Error", err));
+const sqs = new AWS.SQS();
+sqs.sendMessageAsync = Promise.promisify(sqs.sendMessage);
+sqs.receiveMessageAsync = Promise.promisify(sqs.receiveMessage);
+sqs.deleteMessageAsync = Promise.promisify(sqs.deleteMessage);
 
 const app = express();
 
@@ -112,14 +101,27 @@ app.post('/eventsToES', (req, res) => {
   result();
 });
 
-// POST request to receive live feed data
+// SEND UPDATED USER DATA (OUTPUT) TO AWS SQS
+const sendUserProfile = (userData) => {
+  console.log(userData);
+  const { user_id, profile, events } = userData;
+  const params = {
+    QueueUrl: usersQueueUrl,
+    MessageBody: JSON.stringify({ userId: user_id, profile, movieHistory: events }),
+  };
+  sqs.sendMessageAsync(params)
+    .then(data => console.log('Sent updated user data to SQS', data.MessageId))
+    .catch(err => console.log('Error sending user data to SQS ', err));
+};
+
+// handleSession(session)
 // Adds movie event to movie_history then updates user_profiles events array
 // For experimental group, update user_profiles using EMA calculation
 // TODO: add/update in elasticsearch
-app.post('/sessions', (req, res) => {
-  const session = req.body;
-  console.log(session);
+const handleSession = (session) => {
+
   const { userId, groupId } = session;
+  console.log('userId', userId);
   Promise.all(session.events.map((event) => {
     const { startTime } = event;
     const { id, profile } = event.movie;
@@ -129,8 +131,12 @@ app.post('/sessions', (req, res) => {
       profile,
       startTime,
     });
-  })).then(results =>
-    Promise.all(results.map((result) => {
+  })).then((results) => {
+    if (results.length === 0) { // no user event
+      return db.getOneUserProfile(userId)
+        .then(userData => [userData]);
+    }
+    return Promise.all(results.map((result) => {
       const { event_id, movie_profile } = result.rows[0];
       if (groupId === 0) {
         return db.updateUserEvents(userId, event_id);
@@ -141,10 +147,33 @@ app.post('/sessions', (req, res) => {
           const newProfile = calc.EMA(profile, movie_profile);
           return db.updateUserProfileEvents(userId, newProfile, event_id);
         });
-    })))
-    .then(results => res.status(201).send(results))
+    }));
+  })
+    .then((result) => {
+      const userData = result[result.length - 1].rows;
+      return sendUserProfile(userData);
+    })
     .catch(err => console.error(err));
-});
+};
+
+// RECEIVE SIMULATED SESSIONS DATA (INPUT) FROM AWS SQS
+// Receive session data every 1 second
+const receiveSessions = () => {
+  let session;
+
+  cron.schedule('*/1 * * * * *', () => {
+    sqs.receiveMessageAsync({ QueueUrl: sessionsQueueUrl })
+      .then((result) => {
+        session = JSON.parse(result.Messages[0].Body);
+        const { ReceiptHandle } = result.Messages[0];
+        return sqs.deleteMessageAsync({ QueueUrl: sessionsQueueUrl, ReceiptHandle });
+      })
+      .then(() => handleSession(session))
+      .catch(err => console.log('Error', err));
+  }, true);
+};
+
+receiveSessions();
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`App listening on port ${port}!`));
