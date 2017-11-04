@@ -133,40 +133,51 @@ const generateSessions = (date, days) => {
   return writeSequentially(0);
 };
 
-// Generates user session data
-// Makes HTTP post request to /sessions every 1 second
+// DEPRECATED, use AWS SQS instead
+// Generates one user session data
+// Makes HTTP post request to /sessions
 // (will be replaced once AWS SQS is implemented)
-const simulateLiveData = () => {
-  cron.schedule('0-59 * * * * *', () => {
-    const options = {
-      uri: 'http://localhost:3000/sessions',
-      method: 'POST',
-      json: new Session(new Date()),
-    };
-    request(options, (err, res, body) => {
-      if (err) {
-        console.log(err);
-      }
-      console.log(body);
-    });
-  }, true);
+const sendSessionDataHTTP = () => {
+  const options = {
+    uri: 'http://localhost:3000/sessions',
+    method: 'POST',
+    json: new Session(new Date()),
+  };
+  request(options, (err, res, body) => {
+    if (err) {
+      console.log(err);
+    }
+    console.log(body);
+  });
 };
 
-// SEND SIMULATED SESSIONS DATA (INPUT) TO AWS SQS
-// Send session data every 1 second
-const simulateSessionsQueue = () => {
+// DEPRECATED, use AWS SQS instead
+// Simulate live session data flow via HTTP post request every 1 second
+const simulateLiveDataHTTP = () => cron.schedule('0-59 * * * * *', sendSessionDataHTTP, true);
+
+// Generates one user session data
+// Send simulated sesssion data (input) to AWS SQS
+const sendSessionDataSQS = () => {
   const sqs = new AWS.SQS();
   sqs.sendMessageAsync = Promise.promisify(sqs.sendMessage);
 
-  cron.schedule('*/1 * * * * *', () => {
-    const params = {
-      QueueUrl: sessionsQueueUrl,
-      MessageBody: JSON.stringify(new Session(new Date())),
-    };
-    sqs.sendMessageAsync(params)
-      .then(data => console.log('Sent session data to SQS', data.MessageId))
-      .catch(err => console.log('Error sending session data to SQS ', err));
-  }, true);
+  const params = {
+    QueueUrl: sessionsQueueUrl,
+    MessageBody: JSON.stringify(new Session(new Date())),
+  };
+  return sqs.sendMessageAsync(params);
 };
 
-module.exports = { generateSessions, simulateLiveData, simulateSessionsQueue };
+// Simulate live session data flow via sending message to AWS SQS every 1 second
+const simulateSessionsQueue = () => cron.schedule('*/1 * * * * *', () => {
+  sendSessionDataSQS()
+    .then(data => console.log('Sent session data to SQS', data.MessageId))
+    .catch(err => console.log('Error sending session data to SQS ', err));
+}, true);
+
+module.exports = {
+  generateSessions,
+  simulateLiveDataHTTP,
+  sendSessionDataSQS,
+  simulateSessionsQueue,
+};

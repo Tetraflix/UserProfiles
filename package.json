@@ -5,11 +5,11 @@
   "main": "server/index.js",
   "scripts": {
     "dashboard": "node dashboard/elastic.js",
-    "livedata": "node -e 'require(\"./data-simulation/sessionData.js\").simulateLiveData()'",
+    "livedata": "node -e 'require(\"./data-simulation/sessionData.js\").simulateLiveDataHTTP()'",
     "setupdb": "dropdb profiles && createdb profiles && node -e 'require(\"./database/setup.js\").seedDatabase()'",
     "simulate": "node -e 'require(\"./data-simulation/sessionData.js\").simulateSessionsQueue()'",
     "start": "nodemon server/index.js",
-    "test": "mocha --reporter nyan spec/serverSpec.js --timeout 200000"
+    "test": "mocha spec/serverSpec.js --timeout 200000"
   },
   "repository": {
     "type": "git",
