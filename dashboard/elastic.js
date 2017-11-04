@@ -43,9 +43,9 @@ const indexExists = indexName =>
   });
 
 // Add document to index
-const addDocument = (indexName, typeName, document) =>
+const addDocument = (typeName, document) =>
   elasticClient.index({
-    index: indexName,
+    index: 'profiles',
     type: typeName,
     body: document,
   });

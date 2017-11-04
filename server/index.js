@@ -13,6 +13,24 @@ AWS.config.loadFromPath(path.resolve('credentials/config.json'));
 const sessionsQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-sessions-fifo';
 const usersQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-userprofiles-fifo';
 
+const movieGenres = [
+  'action',
+  'animation',
+  'comedy',
+  'documentary',
+  'drama',
+  'family',
+  'fantasy',
+  'horror',
+  'international',
+  'musical',
+  'mystery',
+  'romance',
+  'sci_fi',
+  'thriller',
+  'western',
+];
+
 const sqs = new AWS.SQS();
 sqs.sendMessageAsync = Promise.promisify(sqs.sendMessage);
 sqs.receiveMessageAsync = Promise.promisify(sqs.receiveMessage);
@@ -107,15 +125,22 @@ app.post('/eventsToES', (req, res) => {
 app.post('/sessions', (req, res) => {
   const session = req.body;
   const { userId, groupId } = session;
-  Promise.all(session.events.map((event) => {
+  return Promise.all(session.events.map((event) => {
     const { startTime } = event;
     const { id, profile } = event.movie;
-    return db.addMovieEvents({
-      userId,
-      id,
-      profile,
-      startTime,
-    });
+    const mainId = profile.indexOf(Math.max(...profile));
+    return elastic.addDocument('movie_history', {
+      user_id: userId,
+      movie_id: id,
+      main_genre: movieGenres[mainId],
+      start_time: startTime,
+    })
+      .then(() => db.addMovieEvents({
+        userId,
+        id,
+        profile,
+        startTime,
+      }));
   })).then(results =>
     Promise.all(results.map((result) => {
       const { event_id, movie_profile } = result.rows[0];
@@ -154,12 +179,19 @@ const handleSession = (session) => {
   return Promise.all(session.events.map((event) => {
     const { startTime } = event;
     const { id, profile } = event.movie;
-    return db.addMovieEvents({
-      userId,
-      id,
-      profile,
-      startTime,
-    });
+    const mainId = profile.indexOf(Math.max(...profile));
+    return elastic.addDocument('movie_history', {
+      user_id: userId,
+      movie_id: id,
+      main_genre: movieGenres[mainId],
+      start_time: startTime,
+    })
+      .then(() => db.addMovieEvents({
+        userId,
+        id,
+        profile,
+        startTime,
+      }));
   })).then((results) => {
     if (results.length === 0) { // no user event
       return db.getOneUserProfile(userId)

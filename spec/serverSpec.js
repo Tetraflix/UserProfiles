@@ -102,7 +102,7 @@ describe('Dashboard Test', () => {
     });
   });
 
-  xdescribe('3) Elasticsearch Data', () => {
+  describe('3) Elasticsearch Data', () => {
     it('3.1) It should have profiles index with correct mappings to types', (done) => {
       chai.request(elasticURL)
         .get('/profiles')
