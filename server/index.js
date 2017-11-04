@@ -1,8 +1,33 @@
+const Promise = require('bluebird');
 const express = require('express');
 const bodyParser = require('body-parser');
+const path = require('path');
+// const AWS = require('aws-sdk');
 const db = require('../database/database');
 const elastic = require('../dashboard/elastic');
 const calc = require('./calc');
+const sessionData = require('../data-simulation/sessionData');
+
+// AWS.config.loadFromPath(path.resolve('credentials/config.json'));
+
+// const sessionsQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-sessions-fifo';
+
+// const sqs = new AWS.SQS();
+// sqs.sendMessageAsync = Promise.promisify(sqs.sendMessage);
+// sqs.receiveMessageAsync = Promise.promisify(sqs.receiveMessage);
+// sqs.deleteMessageAsync = Promise.promisify(sqs.deleteMessage);
+
+// const params = {
+//   QueueUrl: sessionsQueueUrl,
+//   MessageBody: JSON.stringify(sessionData.generateOneSession()),
+// };
+// sqs.sendMessageAsync(params)
+//   .then((data) => {
+//     console.log("Success", data.MessageId);
+//     return sqs.receiveMessageAsync({ QueueUrl: queueUrl.sessions });
+//   })
+//   .then((data) => console.log("Received", data))
+//   .catch((err) => console.log("Error", err));
 
 const app = express();
 

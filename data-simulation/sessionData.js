@@ -1,10 +1,15 @@
 const fs = require('fs');
+const path = require('path');
 const request = require('request');
 const Promise = require('bluebird');
 const cron = require('node-cron');
+const AWS = require('aws-sdk');
 
 Promise.promisifyAll(fs);
 
+AWS.config.loadFromPath(path.resolve('credentials/config.json'));
+
+const sessionsQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-sessions-fifo';
 const sessionDataPath = './database/sessionData.txt';
 
 class Movie {
@@ -130,6 +135,7 @@ const generateSessions = (date, days) => {
 
 // Generates user session data
 // Makes HTTP post request to /sessions every 1 second
+// (will be replaced once AWS SQS is implemented)
 const simulateLiveData = () => {
   cron.schedule('0-59 * * * * *', () => {
     const options = {
@@ -137,7 +143,6 @@ const simulateLiveData = () => {
       method: 'POST',
       json: new Session(new Date()),
     };
-    console.log(options.json.events);
     request(options, (err, res, body) => {
       if (err) {
         console.log(err);
@@ -147,4 +152,21 @@ const simulateLiveData = () => {
   }, true);
 };
 
-module.exports = { simulateLiveData, generateSessions };
+// SEND SIMULATED SESSIONS DATA (INPUT) TO AWS SQS
+// Send session data every 1 second
+const simulateSessionsQueue = () => {
+  const sqs = new AWS.SQS();
+  sqs.sendMessageAsync = Promise.promisify(sqs.sendMessage);
+
+  cron.schedule('*/1 * * * * *', () => {
+    const params = {
+      QueueUrl: sessionsQueueUrl,
+      MessageBody: JSON.stringify(new Session(new Date())),
+    };
+    sqs.sendMessageAsync(params)
+      .then(data => console.log('Sent session data to SQS', data.MessageId))
+      .catch(err => console.log('Error sending session data to SQS ', err));
+  }, true);
+};
+
+module.exports = { generateSessions, simulateLiveData, simulateSessionsQueue };
