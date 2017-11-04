@@ -1,3 +1,5 @@
+const path = require('path');
+const Promise = require('bluebird');
 const { Pool } = require('pg');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
@@ -10,8 +12,9 @@ const should = chai.should();
 chai.use(chaiHttp);
 
 let pool;
-const server = 'http://localhost:3000';
-const elastic = 'http://localhost:9200';
+let server;
+const serverURL = 'http://localhost:3000';
+const elasticURL = 'http://localhost:9200';
 
 xdescribe('Database Test', () => {
 
@@ -63,7 +66,7 @@ describe('Dashboard Test', () => {
 
   xdescribe('2) Elasticsearch Setup', () => {
     it('2.1) It should initialize eleasticsearch index', (done) => {
-      chai.request(server)
+      chai.request(serverURL)
         .post('/profilesES')
         .end((err, res) => {
           if (err) {
@@ -75,7 +78,7 @@ describe('Dashboard Test', () => {
     });
 
     it('2.2) It should send historical user profiles to elasticsearch', (done) => {
-      chai.request(server)
+      chai.request(serverURL)
         .post('/usersToES')
         .end((err, res) => {
           if (err) {
@@ -87,7 +90,7 @@ describe('Dashboard Test', () => {
     });
 
     it('2.3) It should send historical movie events to elasticsearch', (done) => {
-      chai.request(server)
+      chai.request(serverURL)
         .post('/eventsToES')
         .end((err, res) => {
           if (err) {
@@ -99,9 +102,9 @@ describe('Dashboard Test', () => {
     });
   });
 
-  describe('3) Elasticsearch Data', () => {
+  xdescribe('3) Elasticsearch Data', () => {
     it('3.1) It should have profiles index with correct mappings to types', (done) => {
-      chai.request(elastic)
+      chai.request(elasticURL)
         .get('/profiles')
         .end((err, res) => {
           if (err) {
@@ -116,7 +119,7 @@ describe('Dashboard Test', () => {
     });
 
     it('3.2) It should have data under type movie_history', (done) => {
-      chai.request(elastic)
+      chai.request(elasticURL)
         .get('/profiles/movie_history/1')
         .end((err, res) => {
           if (err) {
@@ -129,7 +132,7 @@ describe('Dashboard Test', () => {
     });
 
     it('3.3) Data stored in movie_history should have start_time field that is date data type', (done) => {
-      chai.request(elastic)
+      chai.request(elasticURL)
         .get('/profiles')
         .end((err, res) => {
           if (err) {
@@ -142,7 +145,7 @@ describe('Dashboard Test', () => {
     });
 
     it('3.4) It should have data under type user_profiles', (done) => {
-      chai.request(elastic)
+      chai.request(elasticURL)
         .get('/profiles/user_profiles/1')
         .end((err, res) => {
           if (err) {
@@ -156,20 +159,22 @@ describe('Dashboard Test', () => {
   });
 });
 
-describe('Live Data Test', () => {
+describe('Live Data Flow Test', () => {
   let pool;
 
   before((done) => {
     pool = new Pool(config);
+    server = require('../server/index');
     done();
   });
 
   after((done) => {
+    server.task.stop();
     pool.end()
       .then(() => done());
   });
 
-  describe('4) Live Session Data', () => {
+  describe('4) Live Data via HTTP Post Request to /sessions', () => {
     it('4.1) It should receive live session data', (done) => {
       const json = {
         userId: 314919,
@@ -183,7 +188,7 @@ describe('Live Data Test', () => {
           startTime: new Date('2017-11-02T20:26:09.378Z'),
         }],
       };
-      chai.request(server)
+      chai.request(serverURL)
         .post('/sessions')
         .send(json)
         .end((err, res) => {
@@ -208,7 +213,7 @@ describe('Live Data Test', () => {
           startTime: new Date('2017-11-02T20:26:09.378Z'),
         }],
       };
-      chai.request(server)
+      chai.request(serverURL)
         .post('/sessions')
         .send(json)
         .end((err, res) => {
@@ -238,7 +243,7 @@ describe('Live Data Test', () => {
               startTime: new Date('2017-11-02T20:26:09.378Z'),
             }],
           };
-          return chai.request(server)
+          return chai.request(serverURL)
             .post('/sessions')
             .send(json);
         }).then(() => db.getOneUserProfile(2))
@@ -267,7 +272,7 @@ describe('Live Data Test', () => {
               startTime: new Date('2017-11-02T20:26:09.378Z'),
             }],
           };
-          return chai.request(server)
+          return chai.request(serverURL)
             .post('/sessions')
             .send(json);
         }).then(() => db.getOneUserProfile(1))
@@ -277,7 +282,63 @@ describe('Live Data Test', () => {
           done();
         });
     });
+  });
 
+  describe('5) Live Data via AWS SQS', () => {
+    it('5.1) It should send simulated live session data to AWS SQS', (done) => {
+      sessionData.sendSessionDataSQS()
+        .then((response) => {
+          response.MessageId.should.be.a('string');
+          done();
+        })
+        .catch(err => done(err));
+    });
+
+    it('5.2) It should receive simulated live session data to AWS SQS', (done) => {
+      server.receiveSession()
+        .then((response) => {
+          response.should.be.an('object');
+          response.userId.should.be.a('number');
+          response.groupId.should.be.a('number');
+          response.events.should.be.an('array');
+          done();
+        })
+        .catch(err => done(err));
+    });
+
+    it('5.3) It should handle live session data and process user profile', (done) => {
+      const json = {
+        userId: 314919,
+        groupId: 1,
+        events: [],
+      };
+      server.handleSession(json)
+        .then((response) => {
+          response[0].should.be.an('object');
+          response[0].user_id.should.be.a('number');
+          response[0].profile.should.be.an('array');
+          response[0].events.should.be.an('array');
+          done();
+        })
+        .catch(err => done(err));
+    });
+
+    it('5.4) It should send updated user profile data to AWS SQS', (done) => {
+      const json = {
+        user_id: 954566,
+        group_id: 0,
+        age: 99,
+        gender: 'male',
+        events: [],
+        profile: [60, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0],
+      };
+      server.sendUserProfile(json)
+        .then((response) => {
+          response.MessageId.should.be.a('string');
+          done();
+        })
+        .catch(err => done(err));
+    });
   });
 });
 

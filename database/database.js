@@ -61,7 +61,7 @@ const getMovieEventsByUserId = userId =>
 
 const getOneUserProfile = userId =>
   pool.query(`
-    SELECT profile from user_profiles
+    SELECT * from user_profiles
     WHERE user_id = ${userId}
   `);
 
@@ -70,7 +70,7 @@ const updateUserEvents = (userId, eventId) =>
     UPDATE user_profiles
     SET events = events || ${eventId}
     WHERE user_id = ${userId}
-    RETURNING user_id
+    RETURNING *
   `);
 
 const updateUserProfileEvents = (userId, profile, eventId) =>
@@ -78,7 +78,7 @@ const updateUserProfileEvents = (userId, profile, eventId) =>
     UPDATE user_profiles
     SET profile = '{${profile}}', events = events || ${eventId}
     WHERE user_id = ${userId}
-    RETURNING user_id
+    RETURNING *
   `);
 
 const getSubsetUsers = i =>

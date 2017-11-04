@@ -1,10 +1,18 @@
 const fs = require('fs');
+const path = require('path');
 const request = require('request');
 const Promise = require('bluebird');
 const cron = require('node-cron');
+const AWS = require('aws-sdk');
 
 Promise.promisifyAll(fs);
 
+AWS.config.loadFromPath(path.resolve('credentials/config.json'));
+
+const sqs = new AWS.SQS();
+sqs.sendMessageAsync = Promise.promisify(sqs.sendMessage);
+
+const sessionsQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-sessions-fifo';
 const sessionDataPath = './database/sessionData.txt';
 
 class Movie {
@@ -128,23 +136,48 @@ const generateSessions = (date, days) => {
   return writeSequentially(0);
 };
 
-// Generates user session data
-// Makes HTTP post request to /sessions every 1 second
-const simulateLiveData = () => {
-  cron.schedule('0-59 * * * * *', () => {
-    const options = {
-      uri: 'http://localhost:3000/sessions',
-      method: 'POST',
-      json: new Session(new Date()),
-    };
-    console.log(options.json.events);
-    request(options, (err, res, body) => {
-      if (err) {
-        console.log(err);
-      }
-      console.log(body);
-    });
-  }, true);
+// DEPRECATED, use AWS SQS instead
+// Generates one user session data
+// Makes HTTP post request to /sessions
+// (will be replaced once AWS SQS is implemented)
+const sendSessionDataHTTP = () => {
+  const options = {
+    uri: 'http://localhost:3000/sessions',
+    method: 'POST',
+    json: new Session(new Date()),
+  };
+  request(options, (err, res, body) => {
+    if (err) {
+      console.log(err);
+    }
+    console.log(body);
+  });
 };
 
-module.exports = { simulateLiveData, generateSessions };
+// DEPRECATED, use AWS SQS instead
+// Simulate live session data flow via HTTP post request every 1 second
+const simulateLiveDataHTTP = () => cron.schedule('0-59 * * * * *', sendSessionDataHTTP, true);
+
+// Generates one user session data
+// Send simulated sesssion data (input) to AWS SQS
+const sendSessionDataSQS = () => {
+  const params = {
+    QueueUrl: sessionsQueueUrl,
+    MessageBody: JSON.stringify(new Session(new Date())),
+  };
+  return sqs.sendMessageAsync(params);
+};
+
+// Simulate live session data flow via sending message to AWS SQS every 1 second
+const simulateSessionsQueue = () => cron.schedule('*/1 * * * * *', () => {
+  sendSessionDataSQS()
+    .then(data => console.log('Sent session data to SQS', data.MessageId))
+    .catch(err => console.log('Error sending session data to SQS ', err));
+}, true);
+
+module.exports = {
+  generateSessions,
+  simulateLiveDataHTTP,
+  sendSessionDataSQS,
+  simulateSessionsQueue,
+};
