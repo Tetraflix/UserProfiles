@@ -173,19 +173,13 @@ const receiveSession = () => {
 // Updates user profiles according to incoming session data in the db
 // For experimental group, update user_profiles using EMA calculation
 // Returns user profiles data corresponding to updated user
-// TODO: add/update in elasticsearch
+// Includes functionality to insert events and update user profiles on elasticsearch
 const handleSession = (session) => {
   const { userId, groupId } = session;
   return Promise.all(session.events.map((event) => {
     const { startTime } = event;
     const { id, profile } = event.movie;
-    const mainId = profile.indexOf(Math.max(...profile));
-    return elastic.addDocument('movie_history', {
-      user_id: userId,
-      movie_id: id,
-      main_genre: movieGenres[mainId],
-      start_time: startTime,
-    })
+    return elastic.addEvent(userId, event)
       .then(() => db.addMovieEvents({
         userId,
         id,
@@ -195,7 +189,7 @@ const handleSession = (session) => {
   })).then((results) => {
     if (results.length === 0) { // no user event
       return db.getOneUserProfile(userId)
-        .then(userData => [userData]);
+        .then(userData => userData.rows[0]);
     }
     return Promise.all(results.map((result) => {
       const { event_id, movie_profile } = result.rows[0];
@@ -208,8 +202,11 @@ const handleSession = (session) => {
           const newProfile = calc.EMA(profile, movie_profile);
           return db.updateUserProfileEvents(userId, newProfile, event_id);
         });
-    }));
-  }).then(result => result[result.length - 1].rows); // only send one user data
+    }))
+      .then(result => result[result.length - 1].rows[0]);
+  }).then(userData =>
+    elastic.updateUser(userData)
+      .then(() => userData));
 };
 
 // Send updated user profile data to AWS SQS
@@ -224,9 +221,9 @@ const sendUserProfile = (userData) => {
 
 // Manage the flow of live input session data from AWS SQS
 // to ouptut user profile to AWS SQS
-// Schedule to run every 1 second
+// Schedule to run every 2 second
 const manageDataFlow = () =>
-  cron.schedule('*/1 * * * * *', () =>
+  cron.schedule('*/2 * * * * *', () =>
     receiveSession()
       .then(session => handleSession(session))
       .then(userData => sendUserProfile(userData))
