@@ -128,13 +128,7 @@ app.post('/sessions', (req, res) => {
   return Promise.all(session.events.map((event) => {
     const { startTime } = event;
     const { id, profile } = event.movie;
-    const mainId = profile.indexOf(Math.max(...profile));
-    return elastic.addDocument('movie_history', {
-      user_id: userId,
-      movie_id: id,
-      main_genre: movieGenres[mainId],
-      start_time: startTime,
-    })
+    return elastic.addEvent(userId, event)
       .then(() => db.addMovieEvents({
         userId,
         id,
@@ -233,7 +227,7 @@ const manageDataFlow = () =>
 const task = manageDataFlow();
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`App listening on port ${port}!`));
+const expressServer = app.listen(port, () => console.log(`App listening on port ${port}!`));
 
 module.exports = {
   app,
@@ -241,4 +235,5 @@ module.exports = {
   handleSession,
   sendUserProfile,
   task,
+  expressServer,
 };

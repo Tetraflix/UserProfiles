@@ -42,6 +42,13 @@ const indexExists = indexName =>
     index: indexName,
   });
 
+// Count number of documents in a type
+const typeCount = typeName =>
+  elasticClient.count({
+    index: 'profiles',
+    type: typeName,
+  });
+
 // Add movie event into index
 const addEvent = (userId, event) => {
   const { startTime } = event;
@@ -110,6 +117,7 @@ module.exports = {
   deleteIndex,
   initIndex,
   indexExists,
+  typeCount,
   addEvent,
   updateUser,
   bulkIndexUsers,
