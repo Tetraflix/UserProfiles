@@ -12,7 +12,7 @@ AWS.config.loadFromPath(path.resolve('credentials/config.json'));
 const sqs = new AWS.SQS();
 sqs.sendMessageAsync = Promise.promisify(sqs.sendMessage);
 
-const sessionsQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-sessions-fifo';
+const sessionsQueueUrl = 'https://sqs.us-west-2.amazonaws.com/287554401385/tetraflix-sessions.fifo';
 const sessionDataPath = './database/sessionData.txt';
 
 class Movie {
@@ -164,6 +164,7 @@ const sendSessionDataSQS = () => {
   const params = {
     QueueUrl: sessionsQueueUrl,
     MessageBody: JSON.stringify(new Session(new Date())),
+    MessageGroupId: 'sessions',
   };
   return sqs.sendMessageAsync(params);
 };

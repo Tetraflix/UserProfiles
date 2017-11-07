@@ -11,26 +11,8 @@ const elastic = require('../dashboard/elastic');
 
 AWS.config.loadFromPath(path.resolve('credentials/config.json'));
 
-const sessionsQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-sessions-fifo';
-const usersQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-userprofiles-fifo';
-
-const movieGenres = [
-  'action',
-  'animation',
-  'comedy',
-  'documentary',
-  'drama',
-  'family',
-  'fantasy',
-  'horror',
-  'international',
-  'musical',
-  'mystery',
-  'romance',
-  'sci_fi',
-  'thriller',
-  'western',
-];
+const sessionsQueueUrl = 'https://sqs.us-west-2.amazonaws.com/287554401385/tetraflix-sessions.fifo';
+const usersQueueUrl = 'https://sqs.us-west-2.amazonaws.com/287554401385/tetraflix-userprofiles.fifo';
 
 const sqs = new AWS.SQS();
 sqs.sendMessageAsync = Promise.promisify(sqs.sendMessage);
@@ -225,6 +207,7 @@ const sendUserProfile = (userData) => {
   const params = {
     QueueUrl: usersQueueUrl,
     MessageBody: JSON.stringify({ userId: user_id, profile, movieHistory: events }),
+    MessageGroupId: 'user_profiles',
   };
   logger.log({
     level: 'info',
