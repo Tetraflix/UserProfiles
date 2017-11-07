@@ -156,7 +156,7 @@ const sendSessionDataHTTP = () => {
 
 // DEPRECATED, use AWS SQS instead
 // Simulate live session data flow via HTTP post request every 1 second
-const simulateLiveDataHTTP = () => cron.schedule('0-59 * * * * *', sendSessionDataHTTP, true);
+const simulateLiveDataHTTP = () => cron.schedule('*/1 * * * * *', sendSessionDataHTTP, true);
 
 // Generates one user session data
 // Send simulated sesssion data (input) to AWS SQS
@@ -172,7 +172,7 @@ const sendSessionDataSQS = () => {
 // Simulate live session data flow via sending message to AWS SQS every 1 second
 const simulateSessionsQueue = () => cron.schedule('*/1 * * * * *', () => {
   sendSessionDataSQS()
-    .then(data => console.log('Sent session data to SQS', data.MessageId))
+    // .then(data => console.log('Sent session data to SQS', data.MessageId))
     .catch(err => console.log('Error sending session data to SQS ', err));
 }, true);
 
