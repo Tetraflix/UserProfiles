@@ -206,11 +206,12 @@ describe('Live Data Flow Test', () => {
   before((done) => {
     pool = new Pool(config);
     server = require('../server/index');
+    server.task.stop();
+    server.simulateTask.stop();
     done();
   });
 
   after((done) => {
-    server.task.stop();
     server.expressServer.close();
     pool.end()
       .then(() => done());
@@ -299,8 +300,9 @@ describe('Live Data Flow Test', () => {
     it('5.4) It should update user genre preference profile of user who belongs to the experimental group', (done) => {
       let oldProfile;
       let newProfile;
+      const randomUserId = Math.floor(Math.random() * 1000000);
       const session = {
-        userId: 111,
+        userId: randomUserId,
         groupId: 1,
         events: [{
           movie: {
@@ -394,6 +396,36 @@ describe('Live Data Flow Test', () => {
           done();
         })
         .catch(err => done(err));
+    });
+  });
+
+  describe('7) Live Logging via Logstash/Elasticsearch', () => {
+    it('7.1) It should generate new elasticsearch index called logstash and today\'s date', (done) => {
+      const today = new Date().toISOString().substr(0, 10).replace(/-/gi, '.');
+      chai.request(elasticURL)
+        .get(`/logstash-${today}`)
+        .end((err, res) => {
+          if (err) {
+            done(err);
+          }
+          res.should.have.status(200);
+          (res.body[`logstash-${today}`]).should.exist;
+          done();
+        });
+    });
+    it('7.2) It should properly filter log data in JSON format', (done) => {
+      const today = new Date().toISOString().substr(0, 10).replace(/-/gi, '.');
+      chai.request(elasticURL)
+        .get(`/logstash-${today}`)
+        .end((err, res) => {
+          if (err) {
+            done(err);
+          }
+          res.should.have.status(200);
+          (res.body[`logstash-${today}`].mappings.logs.properties.level.type).should.be.eql('text');
+          (res.body[`logstash-${today}`].mappings.logs.properties.message.type).should.be.eql('text');
+          done();
+        });
     });
   });
 });
