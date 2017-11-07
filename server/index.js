@@ -3,10 +3,11 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const AWS = require('aws-sdk');
+const cron = require('node-cron');
+const winston = require('winston');
+const calc = require('./calc');
 const db = require('../database/database');
 const elastic = require('../dashboard/elastic');
-const calc = require('./calc');
-const cron = require('node-cron');
 
 AWS.config.loadFromPath(path.resolve('credentials/config.json'));
 
@@ -35,6 +36,15 @@ const sqs = new AWS.SQS();
 sqs.sendMessageAsync = Promise.promisify(sqs.sendMessage);
 sqs.receiveMessageAsync = Promise.promisify(sqs.receiveMessage);
 sqs.deleteMessageAsync = Promise.promisify(sqs.deleteMessage);
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
 
 const app = express();
 
@@ -159,9 +169,14 @@ const receiveSession = () => {
     .then((result) => {
       session = JSON.parse(result.Messages[0].Body);
       const { ReceiptHandle } = result.Messages[0];
+      logger.log({
+        level: 'info',
+        message: 'receive session',
+      });
       return sqs.deleteMessageAsync({ QueueUrl: sessionsQueueUrl, ReceiptHandle });
     })
-    .then(() => session);
+    .then(() => session)
+    .catch(err => console.error(err));
 };
 
 // Updates user profiles according to incoming session data in the db
@@ -200,7 +215,8 @@ const handleSession = (session) => {
       .then(result => result[result.length - 1].rows[0]);
   }).then(userData =>
     elastic.updateUser(userData)
-      .then(() => userData));
+      .then(() => userData))
+    .catch(err => console.error(err));
 };
 
 // Send updated user profile data to AWS SQS
@@ -210,11 +226,15 @@ const sendUserProfile = (userData) => {
     QueueUrl: usersQueueUrl,
     MessageBody: JSON.stringify({ userId: user_id, profile, movieHistory: events }),
   };
+  logger.log({
+    level: 'info',
+    message: 'send user profile',
+  });
   return sqs.sendMessageAsync(params);
 };
 
 // Manage the flow of live input session data from AWS SQS
-// to ouptut user profile to AWS SQS
+// to live ouptut user data to AWS SQS
 // Schedule to run every 2 second
 const manageDataFlow = () =>
   cron.schedule('*/2 * * * * *', () =>
