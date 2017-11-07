@@ -13,6 +13,24 @@ AWS.config.loadFromPath(path.resolve('credentials/config.json'));
 const sessionsQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-sessions-fifo';
 const usersQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-userprofiles-fifo';
 
+const movieGenres = [
+  'action',
+  'animation',
+  'comedy',
+  'documentary',
+  'drama',
+  'family',
+  'fantasy',
+  'horror',
+  'international',
+  'musical',
+  'mystery',
+  'romance',
+  'sci_fi',
+  'thriller',
+  'western',
+];
+
 const sqs = new AWS.SQS();
 sqs.sendMessageAsync = Promise.promisify(sqs.sendMessage);
 sqs.receiveMessageAsync = Promise.promisify(sqs.receiveMessage);
@@ -107,15 +125,16 @@ app.post('/eventsToES', (req, res) => {
 app.post('/sessions', (req, res) => {
   const session = req.body;
   const { userId, groupId } = session;
-  Promise.all(session.events.map((event) => {
+  return Promise.all(session.events.map((event) => {
     const { startTime } = event;
     const { id, profile } = event.movie;
-    return db.addMovieEvents({
-      userId,
-      id,
-      profile,
-      startTime,
-    });
+    return elastic.addEvent(userId, event)
+      .then(() => db.addMovieEvents({
+        userId,
+        id,
+        profile,
+        startTime,
+      }));
   })).then(results =>
     Promise.all(results.map((result) => {
       const { event_id, movie_profile } = result.rows[0];
@@ -148,22 +167,23 @@ const receiveSession = () => {
 // Updates user profiles according to incoming session data in the db
 // For experimental group, update user_profiles using EMA calculation
 // Returns user profiles data corresponding to updated user
-// TODO: add/update in elasticsearch
+// Includes functionality to insert events and update user profiles on elasticsearch
 const handleSession = (session) => {
   const { userId, groupId } = session;
   return Promise.all(session.events.map((event) => {
     const { startTime } = event;
     const { id, profile } = event.movie;
-    return db.addMovieEvents({
-      userId,
-      id,
-      profile,
-      startTime,
-    });
+    return elastic.addEvent(userId, event)
+      .then(() => db.addMovieEvents({
+        userId,
+        id,
+        profile,
+        startTime,
+      }));
   })).then((results) => {
     if (results.length === 0) { // no user event
       return db.getOneUserProfile(userId)
-        .then(userData => [userData]);
+        .then(userData => userData.rows[0]);
     }
     return Promise.all(results.map((result) => {
       const { event_id, movie_profile } = result.rows[0];
@@ -176,8 +196,11 @@ const handleSession = (session) => {
           const newProfile = calc.EMA(profile, movie_profile);
           return db.updateUserProfileEvents(userId, newProfile, event_id);
         });
-    }));
-  }).then(result => result[result.length - 1].rows); // only send one user data
+    }))
+      .then(result => result[result.length - 1].rows[0]);
+  }).then(userData =>
+    elastic.updateUser(userData)
+      .then(() => userData));
 };
 
 // Send updated user profile data to AWS SQS
@@ -192,9 +215,9 @@ const sendUserProfile = (userData) => {
 
 // Manage the flow of live input session data from AWS SQS
 // to ouptut user profile to AWS SQS
-// Schedule to run every 1 second
+// Schedule to run every 2 second
 const manageDataFlow = () =>
-  cron.schedule('*/1 * * * * *', () =>
+  cron.schedule('*/2 * * * * *', () =>
     receiveSession()
       .then(session => handleSession(session))
       .then(userData => sendUserProfile(userData))
@@ -204,7 +227,7 @@ const manageDataFlow = () =>
 const task = manageDataFlow();
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`App listening on port ${port}!`));
+const expressServer = app.listen(port, () => console.log(`App listening on port ${port}!`));
 
 module.exports = {
   app,
@@ -212,4 +235,5 @@ module.exports = {
   handleSession,
   sendUserProfile,
   task,
+  expressServer,
 };

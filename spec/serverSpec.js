@@ -5,6 +5,7 @@ const chai = require('chai');
 const chaiHttp = require('chai-http');
 const config = require('../database/config');
 const db = require('../database/database');
+const elastic = require('../dashboard/elastic');
 const setup = require('../database/setup');
 const sessionData = require('../data-simulation/sessionData');
 
@@ -31,7 +32,7 @@ xdescribe('Database Test', () => {
       .then(() => done());
   });
 
-  describe('1) Seed database with randomly generated data', () => {
+  describe('1) SETUP: Seed database with randomly generated data', () => {
     it('1.1) It should seed 500,000 user profile data', (done) => {
       db.countUserProfilesRows()
         .then((data) => {
@@ -52,7 +53,7 @@ xdescribe('Database Test', () => {
   });
 });
 
-describe('Dashboard Test', () => {
+describe('Elasticsearch Test', () => {
 
   before((done) => {
     pool = new Pool(config);
@@ -64,7 +65,7 @@ describe('Dashboard Test', () => {
       .then(() => done());
   });
 
-  xdescribe('2) Elasticsearch Setup', () => {
+  xdescribe('2) SETUP: Elasticsearch', () => {
     it('2.1) It should initialize eleasticsearch index', (done) => {
       chai.request(serverURL)
         .post('/profilesES')
@@ -102,7 +103,7 @@ describe('Dashboard Test', () => {
     });
   });
 
-  xdescribe('3) Elasticsearch Data', () => {
+  describe('3) Elasticsearch Seed Data', () => {
     it('3.1) It should have profiles index with correct mappings to types', (done) => {
       chai.request(elasticURL)
         .get('/profiles')
@@ -157,6 +158,46 @@ describe('Dashboard Test', () => {
         });
     });
   });
+
+  describe('4) Elasticsearch Live Data', () => {
+    it('4.1) It should insert an event into profiles index under movie_history type', (done) => {
+      const userId = 52532;
+      const event = {
+        movie: {
+          id: 36543,
+          profile: [0, 0, 50, 20, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 0],
+        },
+        progress: 1,
+        startTime: new Date().toISOString(),
+      };
+      elastic.addEvent(userId, event)
+        .then((result) => {
+          result.created.should.be.true;
+          done();
+        })
+        .catch(err => done(err));
+    });
+
+    it('4.2) It should update user data in elasticsearch', (done) => {
+      const userId = Math.floor(Math.random() * 1000000);
+      let userData;
+      db.getOneUserProfile(userId)
+        .then((result) => {
+          [userData] = result.rows;
+          userData.events = [2515162,
+            2515163,
+            8575648,
+            8575649,
+            8575650,
+            9009087];
+          return elastic.updateUser(userData);
+        }).then((result) => {
+          result.result.should.be.eql('updated');
+          done();
+        })
+        .catch(err => done(err));
+    });
+  });
 });
 
 describe('Live Data Flow Test', () => {
@@ -170,27 +211,28 @@ describe('Live Data Flow Test', () => {
 
   after((done) => {
     server.task.stop();
+    server.expressServer.close();
     pool.end()
       .then(() => done());
   });
 
-  describe('4) Live Data via HTTP Post Request to /sessions', () => {
-    it('4.1) It should receive live session data', (done) => {
-      const json = {
+  describe('5) Live Data via HTTP Post Request to /sessions', () => {
+    it('5.1) It should receive live session data', (done) => {
+      const session = {
         userId: 314919,
         groupId: 1,
         events: [{
           movie: {
-            id: 36543,
-            profile: [0, 0, 50, 20, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 0],
+            id: 56375,
+            profile: [0, 0, 0, 0, 0, 0, 70, 0, 0, 0, 30, 0, 0, 0, 0],
           },
           progress: 1,
-          startTime: new Date('2017-11-02T20:26:09.378Z'),
+          startTime: new Date().toISOString(),
         }],
       };
       chai.request(serverURL)
         .post('/sessions')
-        .send(json)
+        .send(session)
         .end((err, res) => {
           if (err) {
             done(err);
@@ -200,8 +242,8 @@ describe('Live Data Flow Test', () => {
         });
     });
 
-    it('4.2) It should update user_profiles table', (done) => {
-      const json = {
+    it('5.2) It should update user_profiles table', (done) => {
+      const session = {
         userId: 314919,
         groupId: 1,
         events: [{
@@ -210,12 +252,12 @@ describe('Live Data Flow Test', () => {
             profile: [0, 0, 50, 20, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 0],
           },
           progress: 1,
-          startTime: new Date('2017-11-02T20:26:09.378Z'),
+          startTime: new Date().toISOString(),
         }],
       };
       chai.request(serverURL)
         .post('/sessions')
-        .send(json)
+        .send(session)
         .end((err, res) => {
           if (err) {
             done(err);
@@ -225,27 +267,27 @@ describe('Live Data Flow Test', () => {
         });
     });
 
-    it('4.3) It should not update user genre preference profile of user who belongs to the control group', (done) => {
+    it('5.3) It should not update user genre preference profile of user who belongs to the control group', (done) => {
       let oldProfile;
       let newProfile;
       db.getOneUserProfile(2)
         .then((profile) => {
           oldProfile = profile.rows[0].profile;
-          const json = {
+          const session = {
             userId: 2,
             groupId: 0,
             events: [{
               movie: {
-                id: 36543,
-                profile: [0, 0, 50, 20, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 0],
+                id: 36253,
+                profile: [0, 20, 0, 0, 0, 5, 0, 25, 0, 20, 0, 0, 15, 15, 0],
               },
               progress: 1,
-              startTime: new Date('2017-11-02T20:26:09.378Z'),
+              startTime: new Date().toISOString(),
             }],
           };
           return chai.request(serverURL)
             .post('/sessions')
-            .send(json);
+            .send(session);
         }).then(() => db.getOneUserProfile(2))
         .then((profile) => {
           newProfile = profile.rows[0].profile;
@@ -254,28 +296,28 @@ describe('Live Data Flow Test', () => {
         });
     });
 
-    it('4.4) It should update user genre preference profile of user who belongs to the experimental group', (done) => {
+    it('5.4) It should update user genre preference profile of user who belongs to the experimental group', (done) => {
       let oldProfile;
       let newProfile;
-      db.getOneUserProfile(1)
+      const session = {
+        userId: 111,
+        groupId: 1,
+        events: [{
+          movie: {
+            id: 36253,
+            profile: [0, 0, 0, 10, 0, 5, 0, 0, 0, 20, 0, 50, 0, 15, 0],
+          },
+          progress: 1,
+          startTime: new Date().toISOString(),
+        }],
+      };
+      db.getOneUserProfile(session.userId)
         .then((profile) => {
           oldProfile = profile.rows[0].profile;
-          const json = {
-            userId: 1,
-            groupId: 1,
-            events: [{
-              movie: {
-                id: 36543,
-                profile: [0, 0, 50, 20, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 0],
-              },
-              progress: 1,
-              startTime: new Date('2017-11-02T20:26:09.378Z'),
-            }],
-          };
           return chai.request(serverURL)
             .post('/sessions')
-            .send(json);
-        }).then(() => db.getOneUserProfile(1))
+            .send(session);
+        }).then(() => db.getOneUserProfile(session.userId))
         .then((profile) => {
           newProfile = profile.rows[0].profile;
           newProfile.should.be.not.eql(oldProfile);
@@ -284,8 +326,8 @@ describe('Live Data Flow Test', () => {
     });
   });
 
-  describe('5) Live Data via AWS SQS', () => {
-    it('5.1) It should send simulated live session data to AWS SQS', (done) => {
+  describe('6) Live Data via AWS SQS', () => {
+    it('6.1) It should send simulated live session data to AWS SQS', (done) => {
       sessionData.sendSessionDataSQS()
         .then((response) => {
           response.MessageId.should.be.a('string');
@@ -294,7 +336,7 @@ describe('Live Data Flow Test', () => {
         .catch(err => done(err));
     });
 
-    it('5.2) It should receive simulated live session data to AWS SQS', (done) => {
+    it('6.2) It should receive simulated live session data to AWS SQS', (done) => {
       server.receiveSession()
         .then((response) => {
           response.should.be.an('object');
@@ -306,33 +348,47 @@ describe('Live Data Flow Test', () => {
         .catch(err => done(err));
     });
 
-    it('5.3) It should handle live session data and process user profile', (done) => {
-      const json = {
+    it('6.3) It should handle live session data and process user profile', (done) => {
+      const session = {
         userId: 314919,
         groupId: 1,
-        events: [],
+        events: [{
+          movie: {
+            id: 36253,
+            profile: [0, 20, 0, 0, 0, 5, 0, 25, 0, 20, 0, 0, 15, 15, 0],
+          },
+          progress: 1,
+          startTime: new Date().toISOString(),
+        }],
       };
-      server.handleSession(json)
+      server.handleSession(session)
         .then((response) => {
-          response[0].should.be.an('object');
-          response[0].user_id.should.be.a('number');
-          response[0].profile.should.be.an('array');
-          response[0].events.should.be.an('array');
+          response.should.be.an('object');
+          response.user_id.should.be.a('number');
+          response.profile.should.be.an('array');
+          response.events.should.be.an('array');
           done();
         })
         .catch(err => done(err));
     });
 
-    it('5.4) It should send updated user profile data to AWS SQS', (done) => {
-      const json = {
+    it('6.4) It should send updated user profile data to AWS SQS', (done) => {
+      const session = {
         user_id: 954566,
         group_id: 0,
         age: 99,
         gender: 'male',
-        events: [],
+        events: [{
+          movie: {
+            id: 56375,
+            profile: [0, 0, 0, 0, 0, 0, 70, 0, 0, 0, 30, 0, 0, 0, 0],
+          },
+          progress: 1,
+          startTime: new Date().toISOString(),
+        }],
         profile: [60, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0],
       };
-      server.sendUserProfile(json)
+      server.sendUserProfile(session)
         .then((response) => {
           response.MessageId.should.be.a('string');
           done();

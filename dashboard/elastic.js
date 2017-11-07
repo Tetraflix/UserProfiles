@@ -42,13 +42,47 @@ const indexExists = indexName =>
     index: indexName,
   });
 
-// Add document to index
-const addDocument = (indexName, typeName, document) =>
-  elasticClient.index({
-    index: indexName,
+// Count number of documents in a type
+const typeCount = typeName =>
+  elasticClient.count({
+    index: 'profiles',
     type: typeName,
-    body: document,
   });
+
+// Add movie event into index
+const addEvent = (userId, event) => {
+  const { startTime } = event;
+  const { id, profile } = event.movie;
+  const mainId = profile.indexOf(Math.max(...profile));
+  return elasticClient.index({
+    index: 'profiles',
+    type: 'movie_history',
+    body: {
+      user_id: userId,
+      movie_id: id,
+      main_genre: movieGenres[mainId],
+      start_time: startTime,
+    },
+  });
+};
+
+// Update user profile on index
+const updateUser = (userData) => {
+  const id = userData.user_id;
+  const { profile, events } = userData;
+  const favId = profile.indexOf(Math.max(...profile));
+  return elasticClient.update({
+    index: 'profiles',
+    type: 'user_profiles',
+    id: `${id}`,
+    body: {
+      doc: {
+        events_length: events.length,
+        fav_genre: favId,
+      },
+    },
+  });
+};
 
 // Add bulk users to index
 const bulkIndexUsers = (userData) => {
@@ -83,7 +117,9 @@ module.exports = {
   deleteIndex,
   initIndex,
   indexExists,
-  addDocument,
+  typeCount,
+  addEvent,
+  updateUser,
   bulkIndexUsers,
   bulkIndexEvents,
 };
