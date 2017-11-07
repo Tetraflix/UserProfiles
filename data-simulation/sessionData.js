@@ -12,7 +12,7 @@ AWS.config.loadFromPath(path.resolve('credentials/config.json'));
 const sqs = new AWS.SQS();
 sqs.sendMessageAsync = Promise.promisify(sqs.sendMessage);
 
-const sessionsQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-sessions-fifo';
+const sessionsQueueUrl = 'https://sqs.us-west-2.amazonaws.com/287554401385/tetraflix-sessions.fifo';
 const sessionDataPath = './database/sessionData.txt';
 
 class Movie {
@@ -156,7 +156,7 @@ const sendSessionDataHTTP = () => {
 
 // DEPRECATED, use AWS SQS instead
 // Simulate live session data flow via HTTP post request every 1 second
-const simulateLiveDataHTTP = () => cron.schedule('0-59 * * * * *', sendSessionDataHTTP, true);
+const simulateLiveDataHTTP = () => cron.schedule('*/1 * * * * *', sendSessionDataHTTP, true);
 
 // Generates one user session data
 // Send simulated sesssion data (input) to AWS SQS
@@ -164,6 +164,7 @@ const sendSessionDataSQS = () => {
   const params = {
     QueueUrl: sessionsQueueUrl,
     MessageBody: JSON.stringify(new Session(new Date())),
+    MessageGroupId: 'sessions',
   };
   return sqs.sendMessageAsync(params);
 };
@@ -171,7 +172,7 @@ const sendSessionDataSQS = () => {
 // Simulate live session data flow via sending message to AWS SQS every 1 second
 const simulateSessionsQueue = () => cron.schedule('*/1 * * * * *', () => {
   sendSessionDataSQS()
-    .then(data => console.log('Sent session data to SQS', data.MessageId))
+    // .then(data => console.log('Sent session data to SQS', data.MessageId))
     .catch(err => console.log('Error sending session data to SQS ', err));
 }, true);
 

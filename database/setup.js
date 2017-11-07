@@ -1,5 +1,5 @@
 const { Pool } = require('pg');
-const config = require('./config');
+const config = require('../credentials/config');
 const db = require('./database');
 const userData = require('../data-simulation/userData');
 const sessionData = require('../data-simulation/sessionData');

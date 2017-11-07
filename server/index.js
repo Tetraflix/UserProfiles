@@ -3,38 +3,33 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const AWS = require('aws-sdk');
+const cron = require('node-cron');
+const winston = require('winston');
+const calc = require('./calc');
 const db = require('../database/database');
 const elastic = require('../dashboard/elastic');
-const calc = require('./calc');
-const cron = require('node-cron');
+const sessionData = require('../data-simulation/sessionData');
+
+const url = {
+  sessionsQueue: 'https://sqs.us-west-2.amazonaws.com/287554401385/tetraflix-sessions.fifo',
+  usersQueue: 'https://sqs.us-west-2.amazonaws.com/287554401385/tetraflix-userprofiles.fifo',
+};
 
 AWS.config.loadFromPath(path.resolve('credentials/config.json'));
-
-const sessionsQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-sessions-fifo';
-const usersQueueUrl = 'https://sqs.us-west-1.amazonaws.com/287554401385/tetraflix-userprofiles-fifo';
-
-const movieGenres = [
-  'action',
-  'animation',
-  'comedy',
-  'documentary',
-  'drama',
-  'family',
-  'fantasy',
-  'horror',
-  'international',
-  'musical',
-  'mystery',
-  'romance',
-  'sci_fi',
-  'thriller',
-  'western',
-];
 
 const sqs = new AWS.SQS();
 sqs.sendMessageAsync = Promise.promisify(sqs.sendMessage);
 sqs.receiveMessageAsync = Promise.promisify(sqs.receiveMessage);
 sqs.deleteMessageAsync = Promise.promisify(sqs.deleteMessage);
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
 
 const app = express();
 
@@ -120,8 +115,7 @@ app.post('/eventsToES', (req, res) => {
 });
 
 // DEPRECATED, use AWS SQS instead
-// POST request to process live sesion data
-// TODO: Implement insert/update live data to elasticsearch
+// POST request to process live sessions data
 app.post('/sessions', (req, res) => {
   const session = req.body;
   const { userId, groupId } = session;
@@ -155,13 +149,19 @@ app.post('/sessions', (req, res) => {
 // Receive one session data from AWS SQS
 const receiveSession = () => {
   let session;
-  return sqs.receiveMessageAsync({ QueueUrl: sessionsQueueUrl })
+  return sqs.receiveMessageAsync({ QueueUrl: url.sessionsQueue })
     .then((result) => {
       session = JSON.parse(result.Messages[0].Body);
-      const { ReceiptHandle } = result.Messages[0];
-      return sqs.deleteMessageAsync({ QueueUrl: sessionsQueueUrl, ReceiptHandle });
+      const { ReceiptHandle, MessageId } = result.Messages[0];
+      console.log('Received session data from SQS', MessageId);
+      logger.log({
+        level: 'info',
+        message: 'receive session',
+      });
+      return sqs.deleteMessageAsync({ QueueUrl: url.sessionsQueue, ReceiptHandle });
     })
-    .then(() => session);
+    .then(() => session)
+    .catch(err => console.error(err));
 };
 
 // Updates user profiles according to incoming session data in the db
@@ -200,30 +200,40 @@ const handleSession = (session) => {
       .then(result => result[result.length - 1].rows[0]);
   }).then(userData =>
     elastic.updateUser(userData)
-      .then(() => userData));
+      .then(() => userData))
+    .catch(err => console.error(err));
 };
 
 // Send updated user profile data to AWS SQS
 const sendUserProfile = (userData) => {
   const { user_id, profile, events } = userData;
   const params = {
-    QueueUrl: usersQueueUrl,
+    QueueUrl: url.usersQueue,
     MessageBody: JSON.stringify({ userId: user_id, profile, movieHistory: events }),
+    MessageGroupId: 'user_profiles',
   };
+  logger.log({
+    level: 'info',
+    message: 'send user profile',
+  });
   return sqs.sendMessageAsync(params);
 };
 
 // Manage the flow of live input session data from AWS SQS
-// to ouptut user profile to AWS SQS
-// Schedule to run every 2 second
+// to live ouptut user data to AWS SQS
+// Schedule to run every 1 second
 const manageDataFlow = () =>
-  cron.schedule('*/2 * * * * *', () =>
+  cron.schedule('*/1 * * * * *', () =>
     receiveSession()
       .then(session => handleSession(session))
       .then(userData => sendUserProfile(userData))
       .then(data => console.log('Sent updated user data to SQS', data.MessageId))
       .catch(err => console.log('Error', err)), true);
 
+// Invoke session data simulation to session AWS SQS
+const simulateTask = sessionData.simulateSessionsQueue();
+
+// Invoke data flow function to handle data and send to user profiles AWS SQS
 const task = manageDataFlow();
 
 const port = process.env.PORT || 3000;
@@ -234,6 +244,7 @@ module.exports = {
   receiveSession,
   handleSession,
   sendUserProfile,
+  simulateTask,
   task,
   expressServer,
 };
